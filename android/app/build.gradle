@@ -1,0 +1,50 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.decevr.gitimgx"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.decevr.gitimgx"
+        minSdk 26
+        targetSdk 34
+        versionCode 25
+        versionName "3.4"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("../gitimgx.jks")
+            storePassword "gitimgx1"
+            keyAlias "gitx"
+            keyPassword "gitimgx1"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "androidx.webkit:webkit:1.11.0"
+}
+
+configurations.configureEach {
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.24"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24"
+    }
+}

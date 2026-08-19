@@ -1,0 +1,10 @@
+.cache/
+__pycache__/
+*.pyc
+android/app/build/
+android/.gradle/
+android/local.properties
+android/*.jks
+*.apk
+*.jks
+.DS_Store

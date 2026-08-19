@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#10080d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GitVidX" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>GitVidX</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon-192.png" type="image/png" />
+  <link rel="apple-touch-icon" href="./icon-180.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="age-gate" class="age-gate">
+    <div class="age-card">
+      <div class="logo-mark" aria-hidden="true">X</div>
+      <p class="logo-daily">GitVidX</p>
+      <h1>18+ only</h1>
+      <p class="age-copy">
+        This app searches legal, consensual adult porn videos from public tube sites.
+        You must be 18 or older to continue.
+      </p>
+      <p class="age-copy muted">
+        No leaks, hidden cameras, stolen content, or anything involving minors.
+      </p>
+      <div class="age-actions">
+        <button type="button" class="btn primary" id="age-yes">I am 18 or older</button>
+        <button type="button" class="btn ghost" id="age-no">Leave</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <header class="top">
+      <div class="logo-banner" aria-label="GitVidX">
+        <img class="logo-art" src="./banner.jpg" alt="" />
+        <div class="logo-overlay">
+          <p class="logo-edge visually-hidden">GitVidX</p>
+          <p class="logo-daily">video search</p>
+          <p class="brand-by">DecevrCo</p>
+        </div>
+      </div>
+
+      <form id="search-form" class="search-form" autocomplete="off">
+        <input
+          id="search-input"
+          type="search"
+          enterkeyhint="search"
+          placeholder="Search, or open Today for featured…"
+          aria-label="Search videos"
+        />
+        <button type="submit" class="btn primary search-go">Search</button>
+      </form>
+
+      <div class="quick-row" id="quick-row" aria-label="Quick filters">
+        <button type="button" class="chip on" data-q="__daily__">Today</button>
+        <button type="button" class="chip" data-q="amateur">Amateur</button>
+        <button type="button" class="chip" data-q="homemade">Homemade</button>
+        <button type="button" class="chip" data-q="onlyfans">OnlyFans</button>
+        <button type="button" class="chip" data-q="favorites">Saved</button>
+      </div>
+
+      <div class="filter-bar">
+        <button type="button" class="filter-btn" id="cat-toggle" aria-expanded="false" aria-controls="cat-panel">
+          <span class="filter-kicker">Category</span>
+          <span class="filter-value" id="cat-label">Today</span>
+        </button>
+        <button type="button" class="filter-btn" id="site-toggle" aria-expanded="false" aria-controls="site-panel">
+          <span class="filter-kicker">Site</span>
+          <span class="filter-value" id="site-label">All sites</span>
+        </button>
+      </div>
+
+      <div class="filter-panel" id="cat-panel" hidden>
+        <div class="chip-grid" id="preset-row" aria-label="Categories">
+          <button type="button" class="chip on" data-q="__daily__">Today</button>
+          <button type="button" class="chip" data-q="favorites">Saved</button>
+          <button type="button" class="chip clear-chip" id="clear-filters">Clear</button>
+          <p class="panel-label">Hair</p>
+          <button type="button" class="chip" data-q="blonde" data-group="hair">Blonde</button>
+          <button type="button" class="chip" data-q="brunette" data-group="hair">Brunette</button>
+          <button type="button" class="chip" data-q="redhead" data-group="hair">Redhead</button>
+          <button type="button" class="chip" data-q="black hair" data-group="hair">Black</button>
+          <button type="button" class="chip" data-q="auburn" data-group="hair">Auburn</button>
+          <button type="button" class="chip" data-q="platinum" data-group="hair">Platinum</button>
+          <button type="button" class="chip" data-q="grey" data-group="hair">Grey</button>
+          <button type="button" class="chip" data-q="pink hair" data-group="hair">Pink</button>
+          <button type="button" class="chip" data-q="blue hair" data-group="hair">Blue</button>
+          <button type="button" class="chip" data-q="purple hair" data-group="hair">Purple</button>
+          <p class="panel-label">Video style</p>
+          <button type="button" class="chip" data-q="cellphone" data-group="style">Cellphone</button>
+          <button type="button" class="chip" data-q="snapchat" data-group="style">Snapchat</button>
+          <button type="button" class="chip" data-q="homemade" data-group="style">Homemade</button>
+          <button type="button" class="chip" data-q="amateur" data-group="style">Amateur</button>
+          <button type="button" class="chip" data-q="onlyfans" data-group="style">OnlyFans</button>
+          <button type="button" class="chip" data-q="ai" data-group="style">AI</button>
+          <button type="button" class="chip" data-q="pov" data-group="style">POV</button>
+          <p class="panel-label">Camera</p>
+          <button type="button" class="chip" data-q="fly on the wall" data-group="camera">Fly on the wall</button>
+          <button type="button" class="chip" data-q="third person" data-group="camera">Third person</button>
+          <button type="button" class="chip" data-q="close up" data-group="camera">Close-up</button>
+          <button type="button" class="chip" data-q="full body" data-group="camera">Full body</button>
+          <button type="button" class="chip" data-q="overhead" data-group="camera">Overhead</button>
+          <button type="button" class="chip" data-q="low angle" data-group="camera">Low angle</button>
+          <button type="button" class="chip" data-q="side view" data-group="camera">Side view</button>
+          <button type="button" class="chip" data-q="behind camera" data-group="camera">From behind</button>
+          <button type="button" class="chip" data-q="face cam" data-group="camera">Face cam</button>
+          <button type="button" class="chip" data-q="looking at camera" data-group="camera">Looking at camera</button>
+          <button type="button" class="chip" data-q="mirror" data-group="camera">Mirror</button>
+          <button type="button" class="chip" data-q="handheld" data-group="camera">Handheld</button>
+          <button type="button" class="chip" data-q="tripod" data-group="camera">Tripod</button>
+          <button type="button" class="chip" data-q="gopro" data-group="camera">GoPro</button>
+          <button type="button" class="chip" data-q="selfie cam" data-group="camera">Selfie cam</button>
+          <button type="button" class="chip" data-q="two camera" data-group="camera">Two camera</button>
+          <button type="button" class="chip" data-q="cinematic" data-group="camera">Cinematic</button>
+          <button type="button" class="chip" data-q="over the shoulder" data-group="camera">Over the shoulder</button>
+          <button type="button" class="chip" data-q="wide shot" data-group="camera">Wide shot</button>
+          <p class="panel-label">Places</p>
+          <button type="button" class="chip" data-q="hotel">Hotel</button>
+          <button type="button" class="chip" data-q="motel">Motel</button>
+          <button type="button" class="chip" data-q="car">Car</button>
+          <button type="button" class="chip" data-q="public">Public</button>
+          <button type="button" class="chip" data-q="sneaky">Sneaky</button>
+          <button type="button" class="chip" data-q="quickie">Quickie</button>
+          <button type="button" class="chip" data-q="michigan">Michigan</button>
+          <p class="panel-label">Scenes</p>
+          <button type="button" class="chip" data-q="milf">MILF</button>
+          <button type="button" class="chip" data-q="lesbian">Lesbian</button>
+          <button type="button" class="chip" data-q="anal">Anal</button>
+          <button type="button" class="chip" data-q="solo">Solo</button>
+          <button type="button" class="chip" data-q="hardcore">Hardcore</button>
+          <button type="button" class="chip" data-q="blowjob">Blowjob</button>
+          <button type="button" class="chip" data-q="creampie">Creampie</button>
+          <button type="button" class="chip" data-q="big tits">Big tits</button>
+          <button type="button" class="chip" data-q="asian">Asian</button>
+          <button type="button" class="chip" data-q="latina">Latina</button>
+          <button type="button" class="chip" data-q="threesome">Threesome</button>
+          <button type="button" class="chip" data-q="feet">Feet</button>
+          <button type="button" class="chip" data-q="socks">Socks</button>
+          <button type="button" class="chip" data-q="slipped in">Accidentally slipped it in</button>
+          <button type="button" class="chip" data-q="cheating">Cheating</button>
+          <button type="button" class="chip" data-q="cuckold">Cuckold</button>
+          <button type="button" class="chip" data-q="teen">18+ Teen</button>
+          <button type="button" class="chip" data-q="step-sis">Step-sis</button>
+          <button type="button" class="chip" data-q="tramp stamp">Tramp stamp</button>
+          <button type="button" class="chip" data-q="delivery guy">Delivery guy</button>
+          <button type="button" class="chip" data-q="maintenance man">Maintenance man</button>
+          <p class="panel-label">Positions</p>
+          <button type="button" class="chip" data-q="missionary">Missionary</button>
+          <button type="button" class="chip" data-q="doggy">Doggy</button>
+          <button type="button" class="chip" data-q="cowgirl">Cowgirl</button>
+          <button type="button" class="chip" data-q="reverse cowgirl">Reverse cowgirl</button>
+          <button type="button" class="chip" data-q="spooning">Spooning</button>
+          <button type="button" class="chip" data-q="standing">Standing</button>
+          <button type="button" class="chip" data-q="69">69</button>
+          <button type="button" class="chip" data-q="prone bone">Prone bone</button>
+          <button type="button" class="chip" data-q="mating press">Mating press</button>
+          <button type="button" class="chip" data-q="lotus">Lotus</button>
+          <button type="button" class="chip" data-q="piledriver">Piledriver</button>
+          <button type="button" class="chip" data-q="butterfly">Butterfly</button>
+          <button type="button" class="chip" data-q="amazon">Amazon</button>
+          <button type="button" class="chip" data-q="wheelbarrow">Wheelbarrow</button>
+          <button type="button" class="chip" data-q="anvil">Anvil</button>
+          <button type="button" class="chip" data-q="facesitting">Facesitting</button>
+          <button type="button" class="chip" data-q="scissoring">Scissoring</button>
+          <button type="button" class="chip" data-q="sideways">Sideways</button>
+          <button type="button" class="chip" data-q="legs up">Legs up</button>
+          <button type="button" class="chip" data-q="bent over">Bent over</button>
+          <button type="button" class="chip" data-q="full nelson">Full nelson</button>
+          <button type="button" class="chip" data-q="against wall">Against wall</button>
+          <button type="button" class="chip" data-q="chair">Chair</button>
+        </div>
+      </div>
+
+      <div class="filter-panel" id="site-panel" hidden>
+        <div class="chip-grid" id="source-row" aria-label="Sites">
+          <button type="button" class="source on" data-source="all">All sites</button>
+          <button type="button" class="source" data-source="pornhub">Pornhub</button>
+          <button type="button" class="source" data-source="xvideos">XVideos</button>
+          <button type="button" class="source" data-source="xhamster">xHamster</button>
+          <button type="button" class="source" data-source="xnxx">XNXX</button>
+          <button type="button" class="source" data-source="redtube">RedTube</button>
+          <button type="button" class="source" data-source="eporner">Eporner</button>
+          <button type="button" class="source" data-source="xxxbunker">XXXBunker</button>
+          <button type="button" class="source" data-source="tnaflix">TNAflix</button>
+          <button type="button" class="source" data-source="drtuber">DrTuber</button>
+          <button type="button" class="source" data-source="pornone">PornOne</button>
+          <button type="button" class="source" data-source="okxxx">OK.xxx</button>
+          <button type="button" class="source" data-source="porn00">Porn00</button>
+          <button type="button" class="source" data-source="xxxfiles">XXXFiles</button>
+          <button type="button" class="source" data-source="xmoviesforyou">XMoviesForYou</button>
+          <button type="button" class="source" data-source="whoreshub">WhoresHub</button>
+          <button type="button" class="source" data-source="yespornvip">YesPornVIP</button>
+          <button type="button" class="source" data-source="justporn">JustPorn</button>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <p class="status-line" id="status-line">Confirm age to start.</p>
+        <button type="button" class="refresh-btn" id="refresh-btn" hidden>Refresh</button>
+      </div>
+      <div class="progress" id="progress" hidden></div>
+      <p class="consent-line">Consensual, legal, 18+ videos only.</p>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="hero" hidden></section>
+      <p class="more-label" id="more-label" hidden>More videos</p>
+      <div class="grid video-grid" id="grid"></div>
+      <div class="empty" id="empty" hidden>
+        <p>No videos yet. Search or pick a category.</p>
+      </div>
+      <div class="more-wrap">
+        <button type="button" class="btn ghost" id="more-btn" hidden>Load more</button>
+      </div>
+    </main>
+
+    <div id="viewer" class="viewer" hidden>
+      <button type="button" class="viewer-close" id="viewer-close" aria-label="Close">×</button>
+      <button type="button" class="viewer-nav prev" id="viewer-prev" aria-label="Previous">‹</button>
+      <div class="viewer-stage">
+        <iframe id="viewer-frame" title="Video" allow="autoplay; fullscreen; encrypted-media" allowfullscreen hidden></iframe>
+        <p class="viewer-fallback" id="viewer-fallback" hidden>This site needs to open in its own player.</p>
+        <figcaption id="viewer-cap"></figcaption>
+      </div>
+      <button type="button" class="viewer-nav next" id="viewer-next" aria-label="Next">›</button>
+      <div class="viewer-bar">
+        <button type="button" class="btn ghost" id="viewer-save">Save</button>
+        <button type="button" class="btn ghost" id="viewer-full" hidden>Fullscreen</button>
+        <button type="button" class="btn primary" id="viewer-open">Open on site</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./web-search.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

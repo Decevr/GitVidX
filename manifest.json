@@ -1,0 +1,26 @@
+{
+  "name": "GitVidX",
+  "short_name": "GitVidX",
+  "description": "18+ search for legal, consensual adult videos from public tube sites.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "id": "/",
+  "background_color": "#10080d",
+  "theme_color": "#10080d",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
