@@ -63,7 +63,11 @@ final class SearchEngine {
     }
 
     func fetchImage(url: URL) -> ImageProxy {
-        guard let target = queryItem(url, "url"), let remote = URL(string: target), remote.scheme == "https" else {
+        guard let raw = queryItem(url, "url") else {
+            return ImageProxy(data: Data(), mime: "text/plain", status: 400)
+        }
+        let target = cleanThumb(raw)
+        guard let remote = URL(string: target), remote.scheme == "https" else {
             return ImageProxy(data: Data(), mime: "text/plain", status: 400)
         }
         var ref = queryItem(url, "ref") ?? ""
@@ -72,6 +76,9 @@ final class SearchEngine {
             if host.contains("xvideos") { ref = "https://www.xvideos.com/" }
             else if host.contains("xnxx") { ref = "https://www.xnxx.com/" }
             else if host.contains("xhamster") { ref = "https://xhamster.com/" }
+            else if host.contains("rdtcdn") || host.contains("phncdn") || host.contains("redtube") {
+                ref = "https://www.redtube.com/"
+            }
             else if !host.isEmpty { ref = "https://\(host)/" }
         }
         let fetched = fetchBytes(remote.absoluteString, accept: "image/avif,image/webp,image/*,*/*;q=0.8", referer: ref)
@@ -341,7 +348,7 @@ final class SearchEngine {
             "title": String((title ?? "").prefix(180)),
             "page": pageUrl,
             "url": pageUrl,
-            "thumb": thumb ?? "",
+            "thumb": cleanThumb(thumb ?? ""),
             "embed": embed ?? "",
             "duration": cleanDuration(duration ?? "")
         ]
@@ -357,19 +364,25 @@ final class SearchEngine {
             let full = scored.filter { $0.0 >= total }.map { $0.2 }
             let almost = scored.filter { $0.0 >= max(1, total - 1) }.map { $0.2 }
             let some = scored.filter { $0.0 > 0 }.map { $0.2 }
-            if full.count >= 6 { return full }
-            if almost.count >= 6 { return almost }
+            if !full.isEmpty { return full }
+            if !almost.isEmpty { return almost }
             return some
         }
         let tokens = distinctive(query)
-        let needed = max(1, (tokens.count + 1) / 2)
+        let needed = tokens.isEmpty ? 0 : (tokens.count <= 3 ? tokens.count : max(2, (tokens.count * 2 + 2) / 3))
         let scored = items.map { item -> (Int, Int, [String: String]) in
             let text = itemText(item)
             let hits = tokens.reduce(0) { $0 + (tokenIn( $1, text) ? 1 : 0) }
             return (hits, relevance(item, terms(for: query)), item)
         }.sorted { $0.0 == $1.0 ? $0.1 > $1.1 : $0.0 > $1.0 }
-        let strong = scored.filter { $0.0 >= needed || $0.1 >= 8 }.map { $0.2 }
-        return strong.isEmpty ? scored.filter { $0.0 > 0 || $0.1 > 0 }.map { $0.2 } : strong
+        if tokens.isEmpty { return scored.map { $0.2 } }
+        let strong = scored.filter { $0.0 >= needed }.map { $0.2 }
+        if !strong.isEmpty { return strong }
+        if needed > 1 {
+            let close = scored.filter { $0.0 >= needed - 1 }.map { $0.2 }
+            if !close.isEmpty { return close }
+        }
+        return scored.filter { $0.0 > 0 }.map { $0.2 }
     }
 
     private func tagMatched(_ item: [String: String], _ tag: String) -> Bool {
@@ -426,7 +439,11 @@ final class SearchEngine {
     }
 
     private func distinctive(_ query: String) -> [String] {
-        norm(expand(query)).split(separator: " ").map(String.init).filter { !stop.contains($0) && ($0.count >= 2 || $0 == "ai") }
+        let key = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .replacingOccurrences(of: #"[\s_]+"#, with: " ", options: .regularExpression)
+        let fromKey = norm(key).split(separator: " ").map(String.init).filter { !stop.contains($0) && ($0.count >= 2 || $0 == "ai") }
+        if !fromKey.isEmpty { return fromKey }
+        return norm(expand(query)).split(separator: " ").map(String.init).filter { !stop.contains($0) && ($0.count >= 2 || $0 == "ai") }
     }
 
     private func combine(_ tags: [String]) -> String {
@@ -524,7 +541,8 @@ final class SearchEngine {
         if value.hasPrefix("//") { value = "https:" + value }
         let low = value.lowercased()
         if ["blank.gif", "lightbox-blank", "placeholder", "pixel.gif", "1x1"].contains(where: { low.contains($0) }) { return "" }
-        return value
+        return value.replacingOccurrences(of: "ei-ph.rdtcdn.com", with: "ei.phncdn.com")
+            .replacingOccurrences(of: ".rdtcdn.com", with: ".phncdn.com")
     }
 
     private func interleave(_ items: [[String: String]]) -> [[String: String]] {

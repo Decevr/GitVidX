@@ -185,6 +185,7 @@ final class SearchEngine {
     }
 
     ImageResult fetchImage(String target, String referer) throws Exception {
+        target = cleanThumb(target);
         URL parsed = new URL(target);
         if (!"https".equalsIgnoreCase(parsed.getProtocol()) || !isPublicHost(parsed.getHost())) {
             throw new IllegalArgumentException("Blocked image url");
@@ -195,6 +196,8 @@ final class SearchEngine {
             if (host.contains("xvideos")) ref = "https://www.xvideos.com/";
             else if (host.contains("xnxx")) ref = "https://www.xnxx.com/";
             else if (host.contains("xhamster")) ref = "https://xhamster.com/";
+            else if (host.contains("rdtcdn") || host.contains("phncdn") || host.contains("redtube"))
+                ref = "https://www.redtube.com/";
         }
         HttpURLConnection connection = open(parsed, "image/avif,image/webp,image/*,*/*;q=0.8", ref);
         try {
@@ -531,6 +534,12 @@ final class SearchEngine {
 
     private List<String> distinctiveTokens(String query) {
         LinkedHashSet<String> tokens = new LinkedHashSet<>();
+        String key = canonQuery(query).replaceAll("[^a-z0-9]+", " ").trim();
+        for (String token : key.split("\\s+")) {
+            if (token.isEmpty() || isStop(token)) continue;
+            if (token.length() >= 2 || token.equals("ai")) tokens.add(token);
+        }
+        if (!tokens.isEmpty()) return new ArrayList<>(tokens);
         for (String token : expandSearchQuery(query).toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim().split("\\s+")) {
             if (token.isEmpty() || isStop(token)) continue;
             if (token.length() >= 2 || token.equals("ai")) tokens.add(token);
@@ -598,8 +607,8 @@ final class SearchEngine {
                 if (row[0] >= Math.max(1, total - 1)) almost.add(item);
                 if (row[0] > 0) some.add(item);
             }
-            if (full.size() >= 6) return full;
-            if (almost.size() >= 6) return almost;
+            if (!full.isEmpty()) return full;
+            if (!almost.isEmpty()) return almost;
             return some;
         }
         return rankItemsSingle(items, query);
@@ -622,15 +631,24 @@ final class SearchEngine {
             ranks.add(new int[]{hits, relevanceScore(item, terms), i});
         }
         ranks.sort((a, b) -> a[0] != b[0] ? Integer.compare(b[0], a[0]) : Integer.compare(b[1], a[1]));
-        int needed = tokens.isEmpty() ? 1 : Math.max(1, (tokens.size() + 1) / 2);
+        if (tokens.isEmpty()) {
+            List<JSONObject> all = new ArrayList<>();
+            for (int[] row : ranks) all.add(items.get(row[2]));
+            return all;
+        }
+        int needed = tokens.size() <= 3 ? tokens.size() : Math.max(2, (tokens.size() * 2 + 2) / 3);
         List<JSONObject> strong = new ArrayList<>();
+        List<JSONObject> close = new ArrayList<>();
         List<JSONObject> some = new ArrayList<>();
         for (int[] row : ranks) {
             JSONObject item = items.get(row[2]);
-            if (row[0] >= needed || row[1] >= 8) strong.add(item);
-            if (row[0] > 0 || row[1] > 0) some.add(item);
+            if (row[0] >= needed) strong.add(item);
+            if (needed > 1 && row[0] >= needed - 1) close.add(item);
+            if (row[0] > 0) some.add(item);
         }
-        return strong.isEmpty() ? some : strong;
+        if (!strong.isEmpty()) return strong;
+        if (!close.isEmpty()) return close;
+        return some;
     }
 
     private String todayStamp() {
@@ -992,6 +1010,7 @@ final class SearchEngine {
                 || low.contains("pixel.gif") || low.contains("1x1")) {
             return "";
         }
+        url = url.replace("ei-ph.rdtcdn.com", "ei.phncdn.com").replace(".rdtcdn.com", ".phncdn.com");
         return url;
     }
 
@@ -1305,7 +1324,7 @@ final class SearchEngine {
         row.put("title", title == null ? "" : (title.length() > 180 ? title.substring(0, 180) : title));
         row.put("page", page == null ? "" : page);
         row.put("url", page == null ? "" : page);
-        row.put("thumb", thumb == null ? "" : thumb);
+        row.put("thumb", cleanThumb(thumb));
         row.put("embed", embed == null ? "" : embed);
         row.put("duration", cleanDuration(duration == null ? "" : duration));
         return row;

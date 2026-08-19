@@ -451,8 +451,16 @@ def combine_search_query(tags: list[str]) -> str:
 
 
 def distinctive_tokens(query: str) -> list[str]:
-    phrase = expand_search_query(query)
+    key = canon_query(query)
     tokens: list[str] = []
+    for token in re.sub(r"[^a-z0-9]+", " ", key.lower()).split():
+        if token in STOP_WORDS:
+            continue
+        if len(token) >= 2 or token == "ai":
+            tokens.append(token)
+    if tokens:
+        return list(dict.fromkeys(tokens))
+    phrase = expand_search_query(query)
     for token in re.sub(r"[^a-z0-9]+", " ", phrase.lower()).split():
         if token in STOP_WORDS:
             continue
@@ -499,9 +507,9 @@ def rank_items(items: list[dict], query: str, tags: list[str] | None = None) -> 
         full = [item for hits, _score, item in scored if hits >= total]
         almost = [item for hits, _score, item in scored if hits >= max(1, total - 1)]
         some = [item for hits, score, item in scored if hits > 0]
-        if len(full) >= 6:
+        if full:
             return full
-        if len(almost) >= 6:
+        if almost:
             return almost
         return some
     tokens = distinctive_tokens(query)
@@ -513,11 +521,17 @@ def rank_items(items: list[dict], query: str, tags: list[str] | None = None) -> 
         score = relevance_score(item, terms)
         scored.append((hit_count, score, item))
     scored.sort(key=lambda row: (row[0], row[1]), reverse=True)
-    needed = max(1, (len(tokens) + 1) // 2) if tokens else 1
-    strong = [item for hits, score, item in scored if hits >= needed or score >= 8]
+    if not tokens:
+        return [item for _hits, _score, item in scored]
+    needed = len(tokens) if len(tokens) <= 3 else max(2, (len(tokens) * 2 + 2) // 3)
+    strong = [item for hits, _score, item in scored if hits >= needed]
     if strong:
         return strong
-    return [item for hits, score, item in scored if hits > 0 or score > 0]
+    if needed > 1:
+        close = [item for hits, _score, item in scored if hits >= needed - 1]
+        if close:
+            return close
+    return [item for hits, _score, item in scored if hits > 0]
 
 
 def interleave_by_source(items: list[dict]) -> list[dict]:
@@ -644,7 +658,7 @@ def video_item(provider: str, source: str, title: str, page: str, thumb: str, em
         "title": html.unescape(title or "")[:180],
         "page": page,
         "url": page,
-        "thumb": thumb,
+        "thumb": clean_thumb(thumb),
         "embed": embed,
         "duration": clean_duration(duration),
     }
@@ -787,6 +801,8 @@ def clean_thumb(url: str) -> str:
     low = url.lower()
     if any(bad in low for bad in ("blank.gif", "lightbox-blank", "placeholder", "pixel.gif", "1x1")):
         return ""
+    # rdtcdn currently serves an expired certificate; MindGeek thumbs still work on phncdn.
+    url = url.replace("ei-ph.rdtcdn.com", "ei.phncdn.com").replace(".rdtcdn.com", ".phncdn.com")
     return url
 
 
@@ -1494,7 +1510,7 @@ class Handler(SimpleHTTPRequestHandler):
                 print(f"search failed: {error}", flush=True)
 
     def handle_image(self, parsed):
-        target = (parse_qs(parsed.query).get("url") or [""])[0]
+        target = clean_thumb((parse_qs(parsed.query).get("url") or [""])[0])
         if not public_https(target):
             self.send_error(400, "Blocked image url")
             return
@@ -1515,15 +1531,25 @@ class Handler(SimpleHTTPRequestHandler):
                     headers["Referer"] = "https://www.xnxx.com/"
                 elif "xhamster" in host:
                     headers["Referer"] = "https://xhamster.com/"
+                elif "rdtcdn" in host or "phncdn" in host or "redtube" in host:
+                    headers["Referer"] = "https://www.redtube.com/"
                 elif host:
                     headers["Referer"] = f"https://{host}/"
             request = Request(target, headers=headers)
-            with urlopen(request, timeout=20) as response:
+            try:
+                response = urlopen(request, timeout=20)
+            except URLError as error:
+                if "certificate" not in str(error).lower() and "SSL" not in str(error):
+                    raise
+                response = urlopen(request, timeout=20, context=SSL_LOOSE)
+            try:
                 content_type = response.headers.get("Content-Type", "application/octet-stream")
                 if "image" not in content_type and "octet-stream" not in content_type:
                     self.send_error(415, "Not an image")
                     return
                 body = response.read(8_000_000)
+            finally:
+                response.close()
             self.send_response(200)
             self.send_header("Content-Type", content_type.split(";")[0])
             self.send_header("Access-Control-Allow-Origin", "*")

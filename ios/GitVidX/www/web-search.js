@@ -67,7 +67,7 @@
     if (value.startsWith("//")) value = "https:" + value;
     const low = value.toLowerCase();
     if (["blank.gif","lightbox-blank","placeholder","pixel.gif","1x1"].some((b) => low.includes(b))) return "";
-    return value;
+    return value.replace("ei-ph.rdtcdn.com", "ei.phncdn.com").replace(".rdtcdn.com", ".phncdn.com");
   }
   function blocked(text) { return BLOCK.test(text || ""); }
   function hostBlocked(url) {
@@ -96,6 +96,10 @@
     return words.join(" ");
   }
   function tokens(q) {
+    const key = String(q || "").trim().toLowerCase().replace(/[\s_]+/g, " ");
+    const fromKey = key.replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/)
+      .filter((t) => t && !STOP.has(t) && (t.length >= 2 || t === "ai"));
+    if (fromKey.length) return fromKey;
     return expand(q).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/)
       .filter((t) => t && !STOP.has(t) && (t.length >= 2 || t === "ai"));
   }
@@ -124,20 +128,26 @@
       const full = scored.filter((s) => s.hits >= total).map((s) => s.row);
       const almost = scored.filter((s) => s.hits >= Math.max(1, total - 1)).map((s) => s.row);
       const some = scored.filter((s) => s.hits > 0).map((s) => s.row);
-      if (full.length >= 6) return full;
-      if (almost.length >= 6) return almost;
+      if (full.length) return full;
+      if (almost.length) return almost;
       return some;
     }
     const list = tokens(query);
-    const needed = Math.max(1, Math.ceil(list.length / 2));
+    const needed = !list.length ? 0 : (list.length <= 3 ? list.length : Math.max(2, Math.ceil(list.length * 2 / 3)));
     const scored = items.map((row) => {
       const title = norm(row.title);
       const page = norm(row.page + " " + row.url);
       const hits = list.reduce((n, t) => n + (tokenIn(t, title, page) ? 1 : 0), 0);
       return { hits, row };
     }).sort((a, b) => b.hits - a.hits);
+    if (!list.length) return scored.map((s) => s.row);
     const strong = scored.filter((s) => s.hits >= needed).map((s) => s.row);
-    return strong.length ? strong : scored.filter((s) => s.hits > 0).map((s) => s.row);
+    if (strong.length) return strong;
+    if (needed > 1) {
+      const close = scored.filter((s) => s.hits >= needed - 1).map((s) => s.row);
+      if (close.length) return close;
+    }
+    return scored.filter((s) => s.hits > 0).map((s) => s.row);
   }
 
   async function fetchText(url) {

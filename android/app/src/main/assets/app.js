@@ -157,11 +157,17 @@ function hasNativeApi() {
   return false;
 }
 
+function rewriteThumb(url) {
+  return String(url || "")
+    .replace("ei-ph.rdtcdn.com", "ei.phncdn.com")
+    .replace(".rdtcdn.com", ".phncdn.com");
+}
+
 function proxy(url, referer) {
-  if (!hasNativeApi()) return url;
-  const params = new URLSearchParams({ url });
-  if (referer) params.set("ref", referer);
-  return `/api/img?${params}`;
+  const src = rewriteThumb(url);
+  if (!src) return "";
+  if (!hasNativeApi()) return src;
+  return `/api/img?url=${encodeURIComponent(src)}${referer ? `&ref=${encodeURIComponent(referer)}` : ""}`;
 }
 
 function openExternal(url) {
