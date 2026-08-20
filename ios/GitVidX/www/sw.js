@@ -1,4 +1,4 @@
-const CACHE = "gitvidx-v25";
+const CACHE = "gitvidx-v28";
 const ASSETS = [
   "./",
   "./index.html",

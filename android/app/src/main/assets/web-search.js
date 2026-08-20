@@ -29,6 +29,7 @@
     snapchat: "snapchat", hotel: "hotel sex", motel: "motel sex", car: "car sex",
     public: "public sex", sneaky: "sneaky sex", quickie: "quickie", "tramp stamp": "tramp stamp",
     "delivery guy": "delivery guy", "maintenance man": "maintenance man",
+    "co-worker": "coworker", babysitter: "babysitter", cosplay: "cosplay", parody: "parody",
     "fly on the wall": "fly on the wall", "third person": "third person view",
     "close up": "close up", "full body": "full body", overhead: "overhead view",
     "low angle": "low angle", "side view": "side view", "behind camera": "from behind camera",
@@ -104,6 +105,10 @@
     quickie: ["quickie", "quick fuck"], "tramp stamp": ["tramp stamp", "lower back tattoo"],
     "delivery guy": ["delivery guy", "delivery man", "pizza guy"],
     "maintenance man": ["maintenance man", "handyman", "repair man", "plumber"],
+    "co-worker": ["coworker", "co worker", "co-worker", "office sex", "office fuck", "at work", "colleague", "coworkers"],
+    babysitter: ["babysitter", "baby sitter", "baby-sitter", "nanny"],
+    cosplay: ["cosplay", "cos play", "costume play"],
+    parody: ["parody", "porn parody", "xxx parody", "spoof"],
     "fly on the wall": ["fly on the wall", "fly-on-the-wall", "third person camera"],
     "third person": ["third person", "third person view"],
     "close up": ["close up", "close-up", "closeup"], "full body": ["full body", "fullbody"],
@@ -120,7 +125,7 @@
     "wide shot": ["wide shot", "wide angle"]
   };
   const WEAK = new Set(["black","dark","red","pink","blue","purple","grey","gray","silver","large","small","medium","big","huge","tiny","little","round","full","close","wide","low","side","third","two","over","looking","from","behind","against","natural","perky","fake","tits","tit","boobs","boob","ass","butt","booty","breasts","breast"]);
-  const PHRASE_ONLY = new Set(["amazon","butterfly","black hair","pink hair","blue hair","purple hair","looking at camera","over the shoulder","fly on the wall","third person","behind camera","delivery guy","maintenance man","tramp stamp","tan line","anvil","lotus"]);
+  const PHRASE_ONLY = new Set(["amazon","butterfly","black hair","pink hair","blue hair","purple hair","looking at camera","over the shoulder","fly on the wall","third person","behind camera","delivery guy","maintenance man","tramp stamp","tan line","anvil","lotus","co-worker"]);
   const NEGATE = {
     "small tits": ["huge tits","massive tits","enormous tits","giant tits","big tits","large tits","huge boobs","massive boobs","big boobs"],
     "large tits": ["small tits","tiny tits","flat chest","little tits","small boobs","tiny boobs"],
@@ -139,7 +144,37 @@
   const BLOCK = /\b(child|children|kid|kids|toddler|infant|baby|babies|minor|minors|underage|under[\s-]?age|preteen|pre[\s-]?teen|loli|lolita|shota|pedo|paedo|jailbait|young[\s-]?girl|little[\s-]?girl|(1[0-7]|[0-9])\s*(yo|yr|years?\s*old)|leak|leaked|leaks|stolen|hacked|fappening|celebgate|revenge\s*porn|non[\s-]?consensual|without\s+consent|no\s+consent|hidden\s*cam|spy\s*cam|voyeur|creepshot|upskirt|downblouse|passed\s+out|unconscious|drugged|sleeping\s+nude|rape|raped|forced|blackmail|deepnude|undress)\b/i;
   const HOST_BITS = ["leak","leaked","thothub","fappening","celebgate","nudel","coomer","kemono","simpcity","fapello","cyberdrop"];
 
+  const LENGTH = new Set(["short", "long"]);
+  const SHORT_MAX = 10 * 60;
+  const LONG_MIN = 20 * 60;
   function isDaily(q) { return String(q || "").trim().toLowerCase() === DAILY_Q; }
+  function splitLength(tags) {
+    const length = tags.find((tag) => LENGTH.has(tag)) || "";
+    return { content: tags.filter((tag) => !LENGTH.has(tag)), length };
+  }
+  function durationSeconds(row) {
+    const text = String(row && row.duration || "").trim();
+    if (!text) return 0;
+    if (/^\d{1,5}$/.test(text)) {
+      const total = Number(text);
+      return total > 0 && total <= 12 * 3600 ? total : 0;
+    }
+    const clock = text.match(/^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/);
+    if (clock) {
+      const hour = clock[1] ? Number(clock[1]) : 0;
+      return hour * 3600 + Number(clock[2]) * 60 + Number(clock[3]);
+    }
+    const mins = text.match(/^(\d{1,3})\s*(?:min|mins|minutes)\b/i);
+    return mins ? Number(mins[1]) * 60 : 0;
+  }
+  function matchesLength(row, length) {
+    if (!length) return true;
+    const secs = durationSeconds(row);
+    if (!secs) return false;
+    if (length === "short") return secs <= SHORT_MAX;
+    if (length === "long") return secs >= LONG_MIN;
+    return true;
+  }
   function expand(q) {
     if (isDaily(q)) return q;
     const key = String(q || "").trim().toLowerCase().replace(/[\s_]+/g, " ");
@@ -543,9 +578,14 @@
       if (blocked(query)) return { error: "That search is blocked. GitVidX only shows legal, consensual, 18+ videos.", items: [], next: false, sources: [] };
       const daily = isDaily(query);
       const tagList = String(tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 5);
+      const { content, length } = splitLength(tagList);
       let send = query;
-      if (!daily) send = tagList.length ? focused(tagList) : expand(query);
-      if (!send) send = "amateur";
+      if (!daily) {
+        if (content.length) send = focused(content);
+        else if (length) send = "amateur";
+        else send = expand(query);
+      }
+      if (!send || LENGTH.has(String(send).trim().toLowerCase())) send = "amateur";
       const jobs = (!source || source === "all" || !SITES[source]) ? ALL : [source];
       const results = await Promise.all(jobs.map(async (name) => {
         try {
@@ -570,6 +610,7 @@
           }
         } else if (row.error) errors.push(`${row.name}: ${row.error}`);
       }
+      const fetched = items.length > 0;
       if (daily) {
         const buckets = {};
         const order = [];
@@ -587,12 +628,13 @@
         }
         items = mixed;
       } else {
-        items = rank(items, query, tagList);
+        items = rank(items, query, content);
       }
+      if (length) items = items.filter((row) => matchesLength(row, length));
       return {
         query,
         items,
-        next: items.length > 0 && !daily,
+        next: fetched && !daily,
         sources,
         mode: daily ? "daily" : "search",
         date: daily ? today() : null,

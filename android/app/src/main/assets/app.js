@@ -42,6 +42,9 @@ const CAMERA = new Set([
   "mirror", "handheld", "tripod", "gopro", "selfie cam", "two camera",
   "cinematic", "over the shoulder", "wide shot",
 ]);
+const LENGTH = new Set(["short", "long"]);
+const SHORT_MAX = 10 * 60;
+const LONG_MIN = 20 * 60;
 const MAX_FILTERS = 4;
 
 const state = {
@@ -67,8 +70,44 @@ function inSaved() {
   return !state.filters.length && state.query === "favorites";
 }
 
+function contentFilters() {
+  return state.filters.filter((key) => !LENGTH.has(key));
+}
+
+function lengthFilter() {
+  return state.filters.find((key) => LENGTH.has(key)) || "";
+}
+
 function searchQuery() {
-  return state.filters.length ? state.filters.join(" ") : state.query;
+  const content = contentFilters();
+  if (content.length) return content.join(" ");
+  if (lengthFilter()) return "amateur";
+  return state.query;
+}
+
+function durationSeconds(item) {
+  const text = String(item && item.duration || "").trim();
+  if (!text || text.toUpperCase() === "VIDEO") return 0;
+  if (/^\d{1,5}$/.test(text)) {
+    const total = Number(text);
+    return total > 0 && total <= 12 * 3600 ? total : 0;
+  }
+  const clock = text.match(/^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/);
+  if (clock) {
+    const hour = clock[1] ? Number(clock[1]) : 0;
+    return hour * 3600 + Number(clock[2]) * 60 + Number(clock[3]);
+  }
+  const mins = text.match(/^(\d{1,3})\s*(?:min|mins|minutes)\b/i);
+  return mins ? Number(mins[1]) * 60 : 0;
+}
+
+function matchesLength(item, length) {
+  if (!length) return true;
+  const secs = durationSeconds(item);
+  if (!secs) return false;
+  if (length === "short") return secs <= SHORT_MAX;
+  if (length === "long") return secs >= LONG_MIN;
+  return true;
 }
 
 function localDay() {
@@ -414,7 +453,8 @@ async function search(reset, forceRefresh) {
       if (!response.ok) throw new Error(data.error || "Search failed");
     }
     const seen = new Set(state.items.map((item) => item.id));
-    const next = (data.items || []).filter((item) => (item.page || item.url) && !seen.has(item.id));
+    const length = lengthFilter();
+    const next = (data.items || []).filter((item) => (item.page || item.url) && !seen.has(item.id) && matchesLength(item, length));
     state.items.push(...next);
     state.page += 1;
     state.done = !data.next || inDaily();
@@ -541,6 +581,13 @@ function pickCategory(nextQuery, fromPanel) {
   } else if (CAMERA.has(nextQuery)) {
     state.filters = state.filters.filter((key) => !CAMERA.has(key));
     state.filters.push(nextQuery);
+  } else if (LENGTH.has(nextQuery)) {
+    if (state.filters.includes(nextQuery)) {
+      state.filters = state.filters.filter((key) => !LENGTH.has(key));
+    } else {
+      state.filters = state.filters.filter((key) => !LENGTH.has(key));
+      state.filters.push(nextQuery);
+    }
   } else if (state.filters.includes(nextQuery)) {
     state.filters = state.filters.filter((key) => key !== nextQuery);
   } else {

@@ -46,7 +46,9 @@ final class SearchEngine {
         "snapchat": "snapchat", "hotel": "hotel sex", "motel": "motel sex", "car": "car sex",
         "public": "public sex", "sneaky": "sneaky sex", "quickie": "quickie",
         "tramp stamp": "tramp stamp", "delivery guy": "delivery guy",
-        "maintenance man": "maintenance man", "fly on the wall": "fly on the wall",
+        "maintenance man": "maintenance man",
+        "co-worker": "coworker", "babysitter": "babysitter", "cosplay": "cosplay", "parody": "parody",
+        "fly on the wall": "fly on the wall",
         "third person": "third person view", "close up": "close up", "full body": "full body",
         "overhead": "overhead view", "low angle": "low angle", "side view": "side view",
         "behind camera": "from behind camera", "face cam": "face cam",
@@ -104,14 +106,19 @@ final class SearchEngine {
         if daily, !refresh, let cached = loadDaily(source: source, page: page) {
             return cached
         }
+        let length = tags.first(where: { $0 == "short" || $0 == "long" }) ?? ""
+        let content = tags.filter { $0 != "short" && $0 != "long" }
         let send: String
         if daily {
             send = query
-        } else if !tags.isEmpty {
-            send = focused(tags)
+        } else if !content.isEmpty {
+            send = focused(content)
+        } else if !length.isEmpty {
+            send = "amateur"
         } else {
             send = expand(query)
         }
+        let sendQuery = (send.trimmingCharacters(in: .whitespaces).isEmpty || send == "short" || send == "long") ? "amateur" : send
         let jobs: [String] = {
             let all = ["pornhub", "xvideos", "xhamster", "xnxx", "redtube", "eporner", "xxxbunker", "tnaflix", "drtuber", "pornone", "okxxx", "porn00", "xxxfiles", "xmoviesforyou", "whoreshub", "yespornvip", "justporn"]
             if source == "all" || source.isEmpty || !all.contains(source) { return all }
@@ -127,7 +134,7 @@ final class SearchEngine {
             DispatchQueue.global(qos: .userInitiated).async {
                 defer { group.leave() }
                 do {
-                    let found = try self.site(name, query: send.isEmpty ? "amateur" : send, page: page).filter { self.allowed($0) }
+                    let found = try self.site(name, query: sendQuery, page: page).filter { self.allowed($0) }
                     if !found.isEmpty {
                         lock.lock()
                         items.append(contentsOf: found)
@@ -150,15 +157,19 @@ final class SearchEngine {
             seen.insert(key)
             unique.append(row)
         }
+        let fetched = !unique.isEmpty
         if daily {
             unique = interleave(unique)
         } else {
-            unique = rank(unique, query: query, tags: tags)
+            unique = rank(unique, query: query, tags: content)
+        }
+        if !length.isEmpty {
+            unique = unique.filter { matchesLength($0, length) }
         }
         var payload: [String: Any] = [
             "query": query,
             "items": unique,
-            "next": !unique.isEmpty && !daily,
+            "next": fetched && !daily,
             "sources": used,
             "mode": daily ? "daily" : "search",
             "error": unique.isEmpty && !errors.isEmpty ? errors.joined(separator: "; ") : NSNull()
@@ -409,7 +420,7 @@ final class SearchEngine {
     private let phraseOnly: Set<String> = [
         "amazon", "butterfly", "black hair", "pink hair", "blue hair", "purple hair",
         "looking at camera", "over the shoulder", "fly on the wall", "third person",
-        "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line",
+        "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line", "co-worker",
         "anvil", "lotus"
     ]
     private let negate: [String: [String]] = [
@@ -448,7 +459,11 @@ final class SearchEngine {
         "hotel": ["hotel sex", "hotel room", "hotel fuck"],
         "motel": ["motel sex", "motel room"],
         "delivery guy": ["delivery guy", "delivery man", "pizza guy"],
-        "maintenance man": ["maintenance man", "handyman", "plumber"]
+        "maintenance man": ["maintenance man", "handyman", "plumber"],
+        "co-worker": ["coworker", "co worker", "co-worker", "office sex", "office fuck", "at work", "colleague", "coworkers"],
+        "babysitter": ["babysitter", "baby sitter", "baby-sitter", "nanny"],
+        "cosplay": ["cosplay", "cos play", "costume play"],
+        "parody": ["parody", "porn parody", "xxx parody", "spoof"]
     ]
 
     private func tagAliases(_ tag: String) -> [String] {
@@ -694,6 +709,23 @@ final class SearchEngine {
     private func optionalClean(_ raw: String) -> String? {
         let got = cleanDuration(raw)
         return got.isEmpty ? nil : got
+    }
+
+    private func durationSeconds(_ item: [String: String]) -> Int {
+        let text = cleanDuration(item["duration"] ?? "")
+        let parts = text.split(separator: ":").compactMap { Int($0) }
+        if parts.count == 2 { return parts[0] * 60 + parts[1] }
+        if parts.count == 3 { return parts[0] * 3600 + parts[1] * 60 + parts[2] }
+        return 0
+    }
+
+    private func matchesLength(_ item: [String: String], _ length: String) -> Bool {
+        if length.isEmpty { return true }
+        let secs = durationSeconds(item)
+        if secs <= 0 { return false }
+        if length == "short" { return secs <= 10 * 60 }
+        if length == "long" { return secs >= 20 * 60 }
+        return true
     }
 
     private func cleanDuration(_ raw: String) -> String {

@@ -65,7 +65,7 @@ final class SearchEngine {
     private static final Set<String> PHRASE_ONLY = new HashSet<>(Arrays.asList(
             "amazon", "butterfly", "black hair", "pink hair", "blue hair", "purple hair",
             "looking at camera", "over the shoulder", "fly on the wall", "third person",
-            "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line",
+            "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line", "co-worker",
             "anvil", "lotus"
     ));
 
@@ -94,14 +94,26 @@ final class SearchEngine {
         }
         final String q = query;
         final List<String> tags = parseTags(tagsRaw);
+        final List<String> contentTags = new ArrayList<>();
+        String lengthTag = "";
+        for (String tag : tags) {
+            if (tag.equals("short") || tag.equals("long")) lengthTag = tag;
+            else contentTags.add(tag);
+        }
+        final String length = lengthTag;
         final String send;
         if (isDaily(query)) {
             send = query;
-        } else if (!tags.isEmpty()) {
-            send = focusedSearchQuery(tags);
+        } else if (!contentTags.isEmpty()) {
+            send = focusedSearchQuery(contentTags);
+        } else if (!length.isEmpty()) {
+            send = "amateur";
         } else {
             send = expandSearchQuery(query);
         }
+        final String sendQuery = (send == null || send.trim().isEmpty()
+                || send.trim().equalsIgnoreCase("short")
+                || send.trim().equalsIgnoreCase("long")) ? "amateur" : send;
         final int p = page;
         List<NamedSearch> jobs = new ArrayList<>();
         if ("all".equals(source) || source == null || source.isEmpty()) {
@@ -135,7 +147,7 @@ final class SearchEngine {
             for (NamedSearch job : jobs) {
                 futures.add(pool.submit(() -> {
                     List<JSONObject> found = new ArrayList<>();
-                    for (JSONObject row : job.fn.run(send, p)) {
+                    for (JSONObject row : job.fn.run(sendQuery, p)) {
                         if (allowedItem(row)) found.add(row);
                     }
                     return new NamedResult(job.name, found, null);
@@ -164,10 +176,18 @@ final class SearchEngine {
             }
         }
         List<JSONObject> ordered = new ArrayList<>(unique.values());
+        boolean fetched = !ordered.isEmpty();
         if (isDaily(q)) {
             ordered = interleave(ordered);
         } else {
-            ordered = rankItems(ordered, q, tags);
+            ordered = rankItems(ordered, q, contentTags);
+        }
+        if (!length.isEmpty()) {
+            List<JSONObject> kept = new ArrayList<>();
+            for (JSONObject row : ordered) {
+                if (matchesLength(row, length)) kept.add(row);
+            }
+            ordered = kept;
         }
         JSONArray out = new JSONArray();
         for (JSONObject row : ordered) {
@@ -176,7 +196,7 @@ final class SearchEngine {
         JSONObject payload = new JSONObject();
         payload.put("query", q);
         payload.put("items", out);
-        payload.put("next", out.length() > 0 && !isDaily(q));
+        payload.put("next", fetched && !isDaily(q));
         payload.put("sources", sources);
         payload.put("mode", isDaily(q) ? "daily" : "search");
         if (isDaily(q)) {
@@ -292,6 +312,10 @@ final class SearchEngine {
         if (dashed.equals("tramp-stamp") || raw.equals("tramp stamp")) return "tramp stamp";
         if (dashed.equals("delivery-guy") || raw.equals("delivery guy")) return "delivery guy";
         if (dashed.equals("maintenance-man") || dashed.equals("maintaince-man") || raw.equals("maintenance man")) return "maintenance man";
+        if (dashed.equals("co-worker") || dashed.equals("coworker") || dashed.equals("office-sex") || raw.equals("co worker")) return "co-worker";
+        if (dashed.equals("babysitter") || dashed.equals("baby-sitter") || dashed.equals("nanny") || raw.equals("baby sitter")) return "babysitter";
+        if (dashed.equals("cosplay") || dashed.equals("costume-play") || raw.equals("costume play")) return "cosplay";
+        if (dashed.equals("parody") || dashed.equals("porn-parody") || dashed.equals("xxx-parody") || raw.equals("porn parody")) return "parody";
         if (dashed.equals("fly-on-the-wall") || raw.equals("fly on the wall")) return "fly on the wall";
         if (dashed.equals("third-person") || raw.equals("third person")) return "third person";
         if (dashed.equals("close-up") || dashed.equals("closeup") || raw.equals("close up")) return "close up";
@@ -387,6 +411,10 @@ final class SearchEngine {
             case "tramp stamp": return "tramp stamp";
             case "delivery guy": return "delivery guy";
             case "maintenance man": return "maintenance man";
+            case "co-worker": return "coworker";
+            case "babysitter": return "babysitter";
+            case "cosplay": return "cosplay";
+            case "parody": return "parody";
             case "fly on the wall": return "fly on the wall";
             case "third person": return "third person view";
             case "close up": return "close up";
@@ -506,6 +534,10 @@ final class SearchEngine {
             case "tramp stamp": return java.util.Arrays.asList("tramp stamp");
             case "delivery guy": return java.util.Arrays.asList("delivery guy", "delivery man");
             case "maintenance man": return java.util.Arrays.asList("maintenance man", "handyman");
+            case "co-worker": return Arrays.asList("coworker", "co worker", "co-worker", "office sex", "office fuck", "at work", "colleague", "coworkers");
+            case "babysitter": return Arrays.asList("babysitter", "baby sitter", "baby-sitter", "nanny");
+            case "cosplay": return Arrays.asList("cosplay", "cos play", "costume play");
+            case "parody": return Arrays.asList("parody", "porn parody", "xxx parody", "spoof");
             case "fly on the wall": return java.util.Arrays.asList("fly on the wall", "fly-on-the-wall", "third person camera");
             case "third person": return java.util.Arrays.asList("third person", "third person view");
             case "close up": return java.util.Arrays.asList("close up", "close-up", "closeup");
@@ -801,7 +833,7 @@ final class SearchEngine {
         String[] names = {
                 "small tits", "large tits", "big tits", "medium tits", "natural tits", "perky tits",
                 "large ass", "round ass", "black hair", "pink hair", "blue hair", "purple hair",
-                "step-sis", "tramp stamp", "delivery guy", "maintenance man", "fly on the wall",
+                "step-sis", "tramp stamp", "delivery guy", "maintenance man", "co-worker", "babysitter", "cosplay", "parody", "fly on the wall",
                 "looking at camera", "over the shoulder", "third person", "behind camera",
                 "full movie", "full scene", "reverse cowgirl", "prone bone", "mating press",
                 "blonde", "brunette", "redhead", "platinum", "hotel", "motel", "car", "public",
@@ -1158,6 +1190,30 @@ final class SearchEngine {
                 "",
                 isDaily(query) ? DESKTOP_UA : BROWSER_UA
         );
+    }
+
+    private int durationSeconds(JSONObject item) {
+        String text = cleanDuration(item.optString("duration"));
+        if (text.isEmpty()) return 0;
+        String[] parts = text.split(":");
+        try {
+            if (parts.length == 2) return Integer.parseInt(parts[0]) * 60 + Integer.parseInt(parts[1]);
+            if (parts.length == 3) {
+                return Integer.parseInt(parts[0]) * 3600 + Integer.parseInt(parts[1]) * 60 + Integer.parseInt(parts[2]);
+            }
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+        return 0;
+    }
+
+    private boolean matchesLength(JSONObject item, String length) {
+        if (length == null || length.isEmpty()) return true;
+        int secs = durationSeconds(item);
+        if (secs <= 0) return false;
+        if (length.equals("short")) return secs <= 10 * 60;
+        if (length.equals("long")) return secs >= 20 * 60;
+        return true;
     }
 
     private String cleanDuration(String raw) {

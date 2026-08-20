@@ -202,6 +202,13 @@ CATEGORY_ALIASES: dict[str, list[str]] = {
     "tramp stamp": ["tramp stamp", "lower back tattoo"],
     "delivery guy": ["delivery guy", "delivery man", "pizza guy"],
     "maintenance man": ["maintenance man", "handyman", "repair man", "plumber"],
+    "co-worker": [
+        "coworker", "co worker", "co-worker", "office sex", "office fuck",
+        "at work", "colleague", "coworkers",
+    ],
+    "babysitter": ["babysitter", "baby sitter", "baby-sitter", "nanny"],
+    "cosplay": ["cosplay", "cos play", "costume play"],
+    "parody": ["parody", "porn parody", "xxx parody", "spoof"],
     "fly on the wall": ["fly on the wall", "fly-on-the-wall", "third person camera"],
     "third person": ["third person", "third person view"],
     "close up": ["close up", "close-up", "closeup"],
@@ -313,6 +320,10 @@ SEARCH_PHRASE: dict[str, str] = {
     "tramp stamp": "tramp stamp",
     "delivery guy": "delivery guy",
     "maintenance man": "maintenance man",
+    "co-worker": "coworker",
+    "babysitter": "babysitter",
+    "cosplay": "cosplay",
+    "parody": "parody",
     "fly on the wall": "fly on the wall",
     "third person": "third person view",
     "close up": "close up",
@@ -413,6 +424,17 @@ CANON_KEYS = {
     "tramp-stamp": "tramp stamp",
     "delivery-guy": "delivery guy",
     "maintenance-man": "maintenance man",
+    "co-worker": "co-worker",
+    "coworker": "co-worker",
+    "office-sex": "co-worker",
+    "babysitter": "babysitter",
+    "baby-sitter": "babysitter",
+    "nanny": "babysitter",
+    "cosplay": "cosplay",
+    "costume-play": "cosplay",
+    "parody": "parody",
+    "porn-parody": "parody",
+    "xxx-parody": "parody",
     "maintaince-man": "maintenance man",
     "fly-on-the-wall": "fly on the wall",
     "third-person": "third person",
@@ -507,6 +529,11 @@ def relevance_score(item: dict, terms: list[str]) -> int:
     return score
 
 
+LENGTH_TAGS = {"short", "long"}
+SHORT_MAX = 10 * 60
+LONG_MIN = 20 * 60
+
+
 def parse_tags(raw: str | None) -> list[str]:
     if not raw:
         return []
@@ -518,6 +545,41 @@ def parse_tags(raw: str | None) -> list[str]:
         if len(tags) >= 5:
             break
     return tags
+
+
+def split_length_tags(tags: list[str]) -> tuple[list[str], str]:
+    length = next((tag for tag in tags if tag in LENGTH_TAGS), "")
+    content = [tag for tag in tags if tag not in LENGTH_TAGS]
+    return content, length
+
+
+def duration_seconds(item: dict) -> int:
+    text = clean_duration(str(item.get("duration") or ""))
+    if not text:
+        return 0
+    parts = text.split(":")
+    try:
+        nums = [int(part) for part in parts]
+    except ValueError:
+        return 0
+    if len(nums) == 2:
+        return nums[0] * 60 + nums[1]
+    if len(nums) == 3:
+        return nums[0] * 3600 + nums[1] * 60 + nums[2]
+    return 0
+
+
+def matches_length(item: dict, length: str) -> bool:
+    if not length:
+        return True
+    secs = duration_seconds(item)
+    if secs <= 0:
+        return False
+    if length == "short":
+        return secs <= SHORT_MAX
+    if length == "long":
+        return secs >= LONG_MIN
+    return True
 
 
 def combine_search_query(tags: list[str]) -> str:
@@ -577,7 +639,7 @@ PHRASE_ONLY = {
     "amazon", "butterfly", "black hair", "pink hair", "blue hair", "purple hair",
     "looking at camera", "over the shoulder", "fly on the wall", "third person",
     "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line",
-    "anvil", "lotus",
+    "anvil", "lotus", "co-worker",
 }
 
 NEGATE = {
@@ -1626,13 +1688,16 @@ def run_search(query: str, source: str, page: int, tags: list[str] | None = None
     used: list[str] = []
     errors: list[str] = []
     tag_list = parse_tags(",".join(tags or []))
+    content_tags, length = split_length_tags(tag_list)
     if is_daily(query):
         send = query
-    elif tag_list:
-        send = focused_search_query(tag_list)
+    elif content_tags:
+        send = focused_search_query(content_tags)
+    elif length:
+        send = "amateur"
     else:
         send = expand_search_query(query)
-    if not (send or "").strip():
+    if not (send or "").strip() or send.strip().lower() in LENGTH_TAGS:
         send = "amateur"
     with ThreadPoolExecutor(max_workers=16) as pool:
         futures = {pool.submit(fn, send, page): name for name, (_label, fn) in jobs}
@@ -1654,14 +1719,17 @@ def run_search(query: str, source: str, page: int, tags: list[str] | None = None
             continue
         seen.add(key)
         unique.append(row)
+    fetched = bool(unique)
     if is_daily(query):
         unique = interleave_by_source(unique)
     else:
-        unique = rank_items(unique, query, tag_list)
+        unique = rank_items(unique, query, content_tags)
+    if length:
+        unique = [row for row in unique if matches_length(row, length)]
     return {
         "query": query,
         "items": unique,
-        "next": bool(unique) and not is_daily(query),
+        "next": fetched and not is_daily(query),
         "sources": used,
         "date": today_stamp() if is_daily(query) else None,
         "mode": "daily" if is_daily(query) else "search",
