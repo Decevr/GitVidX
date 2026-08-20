@@ -21,7 +21,14 @@ final class SearchEngine {
         "amateur": "amateur", "milf": "milf", "lesbian": "lesbian", "blonde": "blonde",
         "brunette": "brunette", "anal": "anal", "pov": "pov", "solo": "solo",
         "hardcore": "hardcore", "blowjob": "blowjob", "creampie": "creampie",
-        "big tits": "big tits", "asian": "asian", "latina": "latina", "threesome": "threesome",
+        "big tits": "big tits", "tan line": "tan lines", "small tits": "small tits",
+        "medium tits": "medium tits", "large tits": "huge tits", "natural tits": "natural tits",
+        "perky tits": "perky tits", "large ass": "big ass", "round ass": "round ass",
+        "petite": "petite", "curvy": "curvy", "thick": "thick", "pawg": "pawg",
+        "cmnf": "cmnf", "cfnm": "cfnm", "lap dance": "lap dance", "striptease": "striptease",
+        "oil": "oiled", "massage": "massage", "storyline": "storyline",
+        "full movie": "full movie", "full scene": "full scene",
+        "asian": "asian", "latina": "latina", "threesome": "threesome",
         "feet": "feet", "socks": "socks", "cheating": "cheating wife", "cuckold": "cuckold",
         "teen": "teen", "step-sis": "stepsister", "homemade": "homemade", "onlyfans": "onlyfans",
         "ai": "ai generated", "missionary": "missionary", "doggy": "doggy style",
@@ -101,7 +108,7 @@ final class SearchEngine {
         if daily {
             send = query
         } else if !tags.isEmpty {
-            send = combine(tags)
+            send = focused(tags)
         } else {
             send = expand(query)
         }
@@ -355,15 +362,22 @@ final class SearchEngine {
     }
 
     private func rank(_ items: [[String: String]], query: String, tags: [String]) -> [[String: String]] {
-        if !tags.isEmpty {
-            let scored = items.map { item -> (Int, Int, [String: String]) in
-                let hits = tags.reduce(0) { $0 + (tagMatched(item, $1) ? 1 : 0) }
-                return (hits, relevance(item, terms(for: tags.joined(separator: " "))), item)
-            }.sorted { $0.0 == $1.0 ? $0.1 > $1.1 : $0.0 > $1.0 }
-            let total = tags.count
-            let full = scored.filter { $0.0 >= total }.map { $0.2 }
-            let almost = scored.filter { $0.0 >= max(1, total - 1) }.map { $0.2 }
-            let some = scored.filter { $0.0 > 0 }.map { $0.2 }
+        var tagList = tags.filter { !$0.isEmpty }
+        if tagList.isEmpty { tagList = queryAsTags(query) }
+        if !tagList.isEmpty {
+            let scored = items.map { item -> (Int, Int, Int, [String: String]) in
+                let hits = tagList.reduce(0) { $0 + (tagMatched(item, $1) ? 1 : 0) }
+                let strength = tagList.reduce(0) { $0 + tagStrength(item, $1) }
+                return (hits, strength, relevance(item, terms(for: tagList.joined(separator: " "))) + strength * 3, item)
+            }.sorted {
+                if $0.0 != $1.0 { return $0.0 > $1.0 }
+                if $0.1 != $1.1 { return $0.1 > $1.1 }
+                return $0.2 > $1.2
+            }
+            let total = tagList.count
+            let full = scored.filter { $0.0 >= total }.map { $0.3 }
+            let almost = scored.filter { $0.0 >= max(1, total - 1) }.map { $0.3 }
+            let some = scored.filter { $0.0 > 0 }.map { $0.3 }
             if !full.isEmpty { return full }
             if !almost.isEmpty { return almost }
             return some
@@ -372,7 +386,7 @@ final class SearchEngine {
         let needed = tokens.isEmpty ? 0 : (tokens.count <= 3 ? tokens.count : max(2, (tokens.count * 2 + 2) / 3))
         let scored = items.map { item -> (Int, Int, [String: String]) in
             let text = itemText(item)
-            let hits = tokens.reduce(0) { $0 + (tokenIn( $1, text) ? 1 : 0) }
+            let hits = tokens.reduce(0) { $0 + (tokenInTitle($1, text) ? 1 : 0) }
             return (hits, relevance(item, terms(for: query)), item)
         }.sorted { $0.0 == $1.0 ? $0.1 > $1.1 : $0.0 > $1.0 }
         if tokens.isEmpty { return scored.map { $0.2 } }
@@ -385,11 +399,179 @@ final class SearchEngine {
         return scored.filter { $0.0 > 0 }.map { $0.2 }
     }
 
+    private let weakSolo: Set<String> = [
+        "black", "dark", "red", "pink", "blue", "purple", "grey", "gray", "silver",
+        "large", "small", "medium", "big", "huge", "tiny", "little", "round", "full",
+        "close", "wide", "low", "side", "third", "two", "over", "looking", "from",
+        "behind", "against", "natural", "perky", "fake",
+        "tits", "tit", "boobs", "boob", "ass", "butt", "booty", "breasts", "breast"
+    ]
+    private let phraseOnly: Set<String> = [
+        "amazon", "butterfly", "black hair", "pink hair", "blue hair", "purple hair",
+        "looking at camera", "over the shoulder", "fly on the wall", "third person",
+        "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line",
+        "anvil", "lotus"
+    ]
+    private let negate: [String: [String]] = [
+        "small tits": ["huge tits", "massive tits", "enormous tits", "giant tits", "big tits", "large tits", "huge boobs", "massive boobs", "big boobs"],
+        "large tits": ["small tits", "tiny tits", "flat chest", "little tits", "small boobs", "tiny boobs"],
+        "big tits": ["small tits", "tiny tits", "flat chest", "little tits", "small boobs", "tiny boobs"],
+        "medium tits": ["huge tits", "massive tits", "giant tits", "tiny tits", "flat chest"],
+        "large ass": ["flat ass", "no ass", "skinny ass"],
+        "round ass": ["flat ass"],
+        "petite": ["bbw", "ssbbw", "plus size"],
+        "natural tits": ["fake tits", "fake boobs", "implants", "fake breasts"],
+        "blonde": ["brunette", "redhead", "ginger", "black hair", "brown hair"],
+        "brunette": ["blonde", "blond", "redhead", "ginger", "platinum"],
+        "redhead": ["blonde", "blond", "brunette", "black hair", "platinum"],
+        "black hair": ["blonde", "blond", "redhead", "ginger", "platinum"],
+        "platinum": ["brunette", "redhead", "ginger", "black hair", "brown hair"]
+    ]
+    private let aliases: [String: [String]] = [
+        "small tits": ["small tits", "tiny tits", "little tits", "small boobs", "tiny boobs", "small breasts", "flat chest", "petite tits"],
+        "large tits": ["large tits", "huge tits", "big tits", "giant tits", "massive tits", "big boobs", "huge boobs", "big breasts", "busty"],
+        "big tits": ["big tits", "bigtits", "big boobs", "huge tits", "huge boobs"],
+        "medium tits": ["medium tits", "medium boobs", "medium breasts"],
+        "large ass": ["large ass", "big ass", "huge ass", "fat ass", "big booty", "bubble butt"],
+        "round ass": ["round ass", "round booty", "bubble butt"],
+        "black hair": ["black hair", "black haired", "dark hair", "jet black hair"],
+        "blonde": ["blonde", "blond", "blonde hair"],
+        "brunette": ["brunette", "brown hair"],
+        "redhead": ["redhead", "red hair", "ginger"],
+        "platinum": ["platinum blonde", "platinum blond", "platinum"],
+        "step-sis": ["stepsister", "step sister", "step-sister", "stepsis", "step sis"],
+        "cowgirl": ["cowgirl", "cow girl"],
+        "amazon": ["amazon position", "amazon pose"],
+        "butterfly": ["butterfly position", "butterfly pose"],
+        "lotus": ["lotus position", "lotus pose"],
+        "car": ["car sex", "car fuck", "in the car", "backseat"],
+        "hotel": ["hotel sex", "hotel room", "hotel fuck"],
+        "motel": ["motel sex", "motel room"],
+        "delivery guy": ["delivery guy", "delivery man", "pizza guy"],
+        "maintenance man": ["maintenance man", "handyman", "plumber"]
+    ]
+
+    private func tagAliases(_ tag: String) -> [String] {
+        let key = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .replacingOccurrences(of: #"[\s_]+"#, with: " ", options: .regularExpression)
+        var out = aliases[key] ?? []
+        if !phraseOnly.contains(key) { out.append(key) }
+        out.append(expand(tag))
+        return Array(NSOrderedSet(array: out)) as? [String] ?? out
+    }
+
+    private func tokensNear(_ title: String, _ toks: [String]) -> Bool {
+        if toks.count <= 1 { return true }
+        var starts: [Int] = []
+        for tok in toks {
+            guard let range = title.range(of: "\\b\(NSRegularExpression.escapedPattern(for: tok))\\b", options: .regularExpression) else { return true }
+            starts.append(title.distance(from: title.startIndex, to: range.lowerBound))
+        }
+        return (starts.max() ?? 0) - (starts.min() ?? 0) <= 28 + toks.reduce(0) { $0 + $1.count }
+    }
+
+    private func aliasHits(_ title: String, compact: String, alias: String) -> Bool {
+        let phrase = norm(alias)
+        if phrase.isEmpty { return false }
+        if !phrase.contains(" ") {
+            if title.range(of: "\\b\(NSRegularExpression.escapedPattern(for: phrase))\\b", options: .regularExpression) != nil { return true }
+        } else if title.contains(phrase) { return true }
+        let glued = phrase.replacingOccurrences(of: " ", with: "")
+        if glued.count >= 5 && compact.contains(glued) { return true }
+        let words = phrase.split(separator: " ").map(String.init).filter { !$0.isEmpty }
+        let toks = words.filter { !stop.contains($0) && ($0.count >= 2 || $0 == "ai") }
+        if toks.isEmpty { return false }
+        if words.count > 1 && toks.count == 1 { return false }
+        if toks.allSatisfy({ weakSolo.contains($0) || $0.count < 4 }) { return false }
+        if !toks.allSatisfy({ tokenInTitle($0, (title, "", compact)) }) { return false }
+        return tokensNear(title, toks)
+    }
+
     private func tagMatched(_ item: [String: String], _ tag: String) -> Bool {
         let text = itemText(item)
+        let title = text.0
+        let compact = text.2
+        let key = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .replacingOccurrences(of: #"[\s_]+"#, with: " ", options: .regularExpression)
+        let hit = tagAliases(tag).contains { aliasHits(title, compact: compact, alias: $0) }
+        if let negs = negate[key], negs.contains(where: { title.contains($0) }), !hit { return false }
+        if hit { return true }
+        if phraseOnly.contains(key) { return false }
         let tokens = distinctive(tag)
-        if tokens.isEmpty { return relevance(item, terms(for: tag)) >= 6 }
-        return tokens.contains { tokenIn($0, text) }
+        let strong = tokens.contains { !weakSolo.contains($0) && $0.count >= 4 }
+        if !strong { return false }
+        if tokens.allSatisfy({ tokenInTitle($0, text) }) { return tokensNear(title, tokens) }
+        return false
+    }
+
+    private func tagStrength(_ item: [String: String], _ tag: String) -> Int {
+        if !tagMatched(item, tag) { return 0 }
+        let text = itemText(item)
+        for alias in tagAliases(tag) {
+            let phrase = norm(alias)
+            if !phrase.isEmpty && text.0.contains(phrase) { return 3 }
+            let glued = phrase.replacingOccurrences(of: " ", with: "")
+            if !phrase.isEmpty && glued.count >= 5 && text.2.contains(glued) { return 3 }
+        }
+        return 2
+    }
+
+    private func queryAsTags(_ query: String) -> [String] {
+        let key = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .replacingOccurrences(of: #"[\s_]+"#, with: " ", options: .regularExpression)
+        if phrases[key] != nil || aliases[key] != nil { return [key] }
+        let blob = norm(query)
+        var found: [String] = []
+        for name in aliases.keys.sorted(by: { $0.count > $1.count }) {
+            for alias in tagAliases(name) {
+                let phrase = norm(alias)
+                if phrase.isEmpty { continue }
+                if blob.range(of: "\\b\(NSRegularExpression.escapedPattern(for: phrase))\\b", options: .regularExpression) != nil {
+                    if !found.contains(name) { found.append(name) }
+                    break
+                }
+            }
+            if found.count >= 4 { break }
+        }
+        return found
+    }
+
+    private func tokenInTitle(_ token: String, _ text: (String, String, String)) -> Bool {
+        let (title, _, compact) = text
+        if token == "ai" { return title.range(of: #"\bai\b"#, options: .regularExpression) != nil }
+        if title.range(of: "\\b\(NSRegularExpression.escapedPattern(for: token))\\b", options: .regularExpression) != nil { return true }
+        return token.count >= 4 && compact.contains(token)
+    }
+
+    private func focusScore(_ tag: String) -> Int {
+        var score = distinctive(tag).reduce(0) { $0 + $1.count }
+        if expand(tag).contains(" ") { score += 4 }
+        let key = tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            .replacingOccurrences(of: #"[\s_]+"#, with: " ", options: .regularExpression)
+        let style: Set<String> = [
+            "cellphone", "snapchat", "homemade", "amateur", "onlyfans", "ai", "pov",
+            "fly on the wall", "third person", "close up", "full body", "overhead",
+            "low angle", "side view", "behind camera", "face cam", "looking at camera",
+            "mirror", "handheld", "tripod", "gopro", "selfie cam", "two camera",
+            "cinematic", "over the shoulder", "wide shot"
+        ]
+        if style.contains(key) { score -= 8 }
+        return score
+    }
+
+    private func focused(_ tags: [String]) -> String {
+        let ranked = tags.sorted { focusScore($0) > focusScore($1) }
+        var phrasesOut: [String] = []
+        var seen = Set<String>()
+        for tag in ranked.prefix(2) {
+            let phrase = expand(tag)
+            let key = phrase.lowercased()
+            if !phrase.isEmpty && !seen.contains(key) {
+                seen.insert(key)
+                phrasesOut.append(phrase)
+            }
+        }
+        return phrasesOut.joined(separator: " ")
     }
 
     private func itemText(_ item: [String: String]) -> (String, String, String) {

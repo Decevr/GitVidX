@@ -5,7 +5,14 @@
   const PHRASES = {
     amateur: "amateur", milf: "milf", lesbian: "lesbian", blonde: "blonde", brunette: "brunette",
     anal: "anal", pov: "pov", solo: "solo", hardcore: "hardcore", blowjob: "blowjob",
-    creampie: "creampie", "big tits": "big tits", asian: "asian", latina: "latina",
+    creampie: "creampie", "big tits": "big tits", "tan line": "tan lines",
+    "small tits": "small tits", "medium tits": "medium tits", "large tits": "huge tits",
+    "natural tits": "natural tits", "perky tits": "perky tits", "large ass": "big ass",
+    "round ass": "round ass", petite: "petite", curvy: "curvy", thick: "thick", pawg: "pawg",
+    cmnf: "cmnf", cfnm: "cfnm", "lap dance": "lap dance", striptease: "striptease",
+    oil: "oiled", massage: "massage", storyline: "storyline",
+    "full movie": "full movie", "full scene": "full scene",
+    asian: "asian", latina: "latina",
     threesome: "threesome", feet: "feet", socks: "socks", cheating: "cheating wife",
     cuckold: "cuckold", teen: "teen", "step-sis": "stepsister", homemade: "homemade",
     onlyfans: "onlyfans", ai: "ai generated", missionary: "missionary", doggy: "doggy style",
@@ -29,6 +36,105 @@
     handheld: "handheld camera", tripod: "tripod camera", gopro: "gopro",
     "selfie cam": "selfie", "two camera": "two camera", cinematic: "cinematic",
     "over the shoulder": "over the shoulder", "wide shot": "wide shot"
+  };
+  const ALIASES = {
+    amateur: ["amateur", "real amateur"], milf: ["milf"],
+    lesbian: ["lesbian", "lesbians", "girl on girl"],
+    blonde: ["blonde", "blond", "blonde hair", "blond hair"],
+    brunette: ["brunette", "brown hair", "brown haired"],
+    anal: ["anal"], pov: ["pov", "point of view"],
+    solo: ["solo", "masturbation", "masturbating"], hardcore: ["hardcore"],
+    blowjob: ["blowjob", "blow job", "bj", "cock sucking"],
+    creampie: ["creampie", "cream pie"],
+    "big tits": ["big tits", "bigtits", "big boobs", "huge tits", "huge boobs", "big breasts"],
+    "tan line": ["tan line", "tanline", "tan lines", "tanlines"],
+    "small tits": ["small tits", "small tit", "tiny tits", "tiny tit", "little tits", "small boobs", "tiny boobs", "little boobs", "small breasts", "tiny breasts", "flat chest", "small chest", "petite tits", "a cup"],
+    "medium tits": ["medium tits", "medium boobs", "medium breasts", "average tits", "c cup", "medium sized tits"],
+    "large tits": ["large tits", "huge tits", "big tits", "giant tits", "massive tits", "big boobs", "huge boobs", "massive boobs", "giant boobs", "big breasts", "huge breasts", "large breasts", "big naturals", "busty", "bigtits"],
+    "natural tits": ["natural tits", "natural breasts", "natural boobs", "naturals", "real tits"],
+    "perky tits": ["perky tits", "perky breasts", "perky boobs"],
+    "large ass": ["large ass", "big ass", "huge ass", "fat ass", "phat ass", "big booty", "huge booty", "bubble butt", "big butt"],
+    "round ass": ["round ass", "round booty", "peach ass", "bubble butt"],
+    petite: ["petite"], curvy: ["curvy", "curvy body"], thick: ["thick", "thicc"], pawg: ["pawg"],
+    cmnf: ["cmnf", "clothed male naked female"], cfnm: ["cfnm", "clothed female naked male"],
+    "lap dance": ["lap dance", "lapdance"], striptease: ["striptease", "strip tease"],
+    oil: ["oiled", "oil massage", "oiled up", "oily"], massage: ["massage"],
+    storyline: ["storyline", "story line", "plot"],
+    "full movie": ["full movie", "full length", "feature length"],
+    "full scene": ["full scene", "complete scene"],
+    asian: ["asian"], latina: ["latina", "latin", "hispanic"],
+    threesome: ["threesome", "threesom", "ffm", "mmf", "3some"],
+    feet: ["feet", "foot fetish", "footjob", "soles"],
+    socks: ["socks", "sock", "sockjob", "sock fetish", "ankle socks", "white socks"],
+    cheating: ["cheating", "cheating wife", "cheats", "affair"],
+    cuckold: ["cuckold", "cuckolding", "cuck"],
+    teen: ["teen", "18 teen", "18 year", "barely 18"],
+    "step-sis": ["stepsister", "step sister", "step-sister", "stepsis", "step sis", "step-sis"],
+    homemade: ["homemade", "home made", "homemade amateur", "real homemade"],
+    onlyfans: ["onlyfans", "only fans", "only-fans"],
+    ai: ["ai generated", "ai porn", "ai generated porn", "artificial intelligence"],
+    missionary: ["missionary"], doggy: ["doggy", "doggy style", "doggystyle"],
+    cowgirl: ["cowgirl", "cow girl"], "reverse cowgirl": ["reverse cowgirl", "reversecowgirl"],
+    spooning: ["spooning", "spoon fuck"], standing: ["standing sex", "standing fuck", "standing doggy"],
+    "69": ["69", "sixty nine", "sixtynine"], "prone bone": ["prone bone", "pronebone"],
+    "mating press": ["mating press", "matingpress"], lotus: ["lotus position", "lotus pose"],
+    piledriver: ["piledriver", "pile driver"], butterfly: ["butterfly position", "butterfly pose"],
+    amazon: ["amazon position", "amazon pose"], wheelbarrow: ["wheelbarrow"],
+    anvil: ["anvil position", "anvil pose"],
+    facesitting: ["facesitting", "face sitting", "queening"], scissoring: ["scissoring", "scissor"],
+    sideways: ["sideways", "side fuck", "on the side"],
+    "legs up": ["legs up", "legs in the air", "legs over"],
+    "bent over": ["bent over", "bend over", "bending over"], "full nelson": ["full nelson"],
+    "against wall": ["against the wall", "wall sex", "pinned to the wall", "against wall"],
+    chair: ["chair sex", "chair fuck", "on the chair"],
+    michigan: ["michigan", "michigan sex", "michigan position"],
+    "slipped in": ["slipped it in", "accidentally slipped it in", "accidentally slipped in", "accidental slip"],
+    redhead: ["redhead", "red hair", "red haired", "ginger"],
+    "black hair": ["black hair", "black haired", "dark hair", "jet black hair"],
+    auburn: ["auburn", "auburn hair"],
+    platinum: ["platinum blonde", "platinum blond", "platinum hair", "platinum"],
+    grey: ["grey hair", "gray hair", "silver hair", "granny hair"],
+    "pink hair": ["pink hair", "pink haired"], "blue hair": ["blue hair", "blue haired"],
+    "purple hair": ["purple hair", "purple haired"],
+    cellphone: ["cellphone", "cell phone", "phone video", "mobile video", "iphone video"],
+    snapchat: ["snapchat", "snap chat"],
+    hotel: ["hotel sex", "hotel room", "hotel fuck"], motel: ["motel sex", "motel room", "motel fuck"],
+    car: ["car sex", "car fuck", "in the car", "backseat", "back seat"],
+    public: ["public sex", "public fuck", "in public"], sneaky: ["sneaky sex", "sneaky fuck", "sneaky"],
+    quickie: ["quickie", "quick fuck"], "tramp stamp": ["tramp stamp", "lower back tattoo"],
+    "delivery guy": ["delivery guy", "delivery man", "pizza guy"],
+    "maintenance man": ["maintenance man", "handyman", "repair man", "plumber"],
+    "fly on the wall": ["fly on the wall", "fly-on-the-wall", "third person camera"],
+    "third person": ["third person", "third person view"],
+    "close up": ["close up", "close-up", "closeup"], "full body": ["full body", "fullbody"],
+    overhead: ["overhead view", "top down", "birds eye"], "low angle": ["low angle", "low-angle"],
+    "side view": ["side view", "side angle"],
+    "behind camera": ["camera from behind", "shot from behind", "from behind camera"],
+    "face cam": ["face cam", "facecam"],
+    "looking at camera": ["looking at camera", "looks at camera", "look at camera"],
+    mirror: ["mirror fuck", "mirror sex", "in the mirror"],
+    handheld: ["handheld camera", "handheld"], tripod: ["tripod", "tripod camera"],
+    gopro: ["gopro", "go pro"], "selfie cam": ["selfie", "front camera", "selfie cam"],
+    "two camera": ["two camera", "dual camera", "multi cam"], cinematic: ["cinematic"],
+    "over the shoulder": ["over the shoulder", "over-the-shoulder"],
+    "wide shot": ["wide shot", "wide angle"]
+  };
+  const WEAK = new Set(["black","dark","red","pink","blue","purple","grey","gray","silver","large","small","medium","big","huge","tiny","little","round","full","close","wide","low","side","third","two","over","looking","from","behind","against","natural","perky","fake","tits","tit","boobs","boob","ass","butt","booty","breasts","breast"]);
+  const PHRASE_ONLY = new Set(["amazon","butterfly","black hair","pink hair","blue hair","purple hair","looking at camera","over the shoulder","fly on the wall","third person","behind camera","delivery guy","maintenance man","tramp stamp","tan line","anvil","lotus"]);
+  const NEGATE = {
+    "small tits": ["huge tits","massive tits","enormous tits","giant tits","big tits","large tits","huge boobs","massive boobs","big boobs"],
+    "large tits": ["small tits","tiny tits","flat chest","little tits","small boobs","tiny boobs"],
+    "big tits": ["small tits","tiny tits","flat chest","little tits","small boobs","tiny boobs"],
+    "medium tits": ["huge tits","massive tits","giant tits","tiny tits","flat chest"],
+    "large ass": ["flat ass","no ass","skinny ass"],
+    "round ass": ["flat ass"],
+    petite: ["bbw","ssbbw","plus size"],
+    "natural tits": ["fake tits","fake boobs","implants","fake breasts"],
+    blonde: ["brunette","redhead","ginger","black hair","brown hair"],
+    brunette: ["blonde","blond","redhead","ginger","platinum"],
+    redhead: ["blonde","blond","brunette","black hair","platinum"],
+    "black hair": ["blonde","blond","redhead","ginger","platinum"],
+    platinum: ["brunette","redhead","ginger","black hair","brown hair"]
   };
   const BLOCK = /\b(child|children|kid|kids|toddler|infant|baby|babies|minor|minors|underage|under[\s-]?age|preteen|pre[\s-]?teen|loli|lolita|shota|pedo|paedo|jailbait|young[\s-]?girl|little[\s-]?girl|(1[0-7]|[0-9])\s*(yo|yr|years?\s*old)|leak|leaked|leaks|stolen|hacked|fappening|celebgate|revenge\s*porn|non[\s-]?consensual|without\s+consent|no\s+consent|hidden\s*cam|spy\s*cam|voyeur|creepshot|upskirt|downblouse|passed\s+out|unconscious|drugged|sleeping\s+nude|rape|raped|forced|blackmail|deepnude|undress)\b/i;
   const HOST_BITS = ["leak","leaked","thothub","fappening","celebgate","nudel","coomer","kemono","simpcity","fapello","cyberdrop"];
@@ -90,10 +196,67 @@
         if (!key || STOP.has(key) || seen.has(key)) continue;
         seen.add(key);
         words.push(word);
-        if (words.length >= 6) return words.join(" ");
+        if (words.length >= 5) return words.join(" ");
       }
     }
     return words.join(" ");
+  }
+  const STYLE = new Set(["cellphone","snapchat","homemade","amateur","onlyfans","ai","pov","fly on the wall","third person","close up","full body","overhead","low angle","side view","behind camera","face cam","looking at camera","mirror","handheld","tripod","gopro","selfie cam","two camera","cinematic","over the shoulder","wide shot"]);
+  function focused(tags) {
+    const spec = (tag) => {
+      let score = tokens(tag).reduce((n, t) => n + t.length, 0);
+      if (expand(tag).includes(" ")) score += 4;
+      if (STYLE.has(String(tag || "").trim().toLowerCase().replace(/[\s_]+/g, " "))) score -= 8;
+      return score;
+    };
+    const ranked = [...tags].sort((a, b) => spec(b) - spec(a));
+    const phrases = [];
+    const seen = new Set();
+    for (const tag of ranked.slice(0, 2)) {
+      const phrase = expand(tag);
+      const key = phrase.toLowerCase();
+      if (phrase && !seen.has(key)) {
+        seen.add(key);
+        phrases.push(phrase);
+      }
+    }
+    return phrases.join(" ") || combine(ranked.slice(0, 3));
+  }
+  function aliases(tag) {
+    const key = String(tag || "").trim().toLowerCase().replace(/[\s_]+/g, " ");
+    const extra = PHRASE_ONLY.has(key) ? [] : [key];
+    return [...new Set([...(ALIASES[key] || []), ...extra, expand(tag), PHRASES[key] || ""])].filter(Boolean);
+  }
+  function tokensNear(title, toks) {
+    if (toks.length <= 1) return true;
+    const starts = [];
+    for (const tok of toks) {
+      const m = title.match(new RegExp(`\\b${tok.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`));
+      if (!m || m.index == null) return true;
+      starts.push(m.index);
+    }
+    return Math.max(...starts) - Math.min(...starts) <= 28 + toks.reduce((n, t) => n + t.length, 0);
+  }
+  function aliasHitsOne(title, compact, alias) {
+    const phrase = norm(alias);
+    if (!phrase) return false;
+    if (!phrase.includes(" ")) {
+      const re = new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
+      if (re.test(title)) return true;
+    } else if (title.includes(phrase)) return true;
+    const glued = phrase.replace(/ /g, "");
+    if (glued.length >= 5 && compact.includes(glued)) return true;
+    const words = phrase.split(/\s+/).filter(Boolean);
+    const toks = words.filter((t) => t && !STOP.has(t) && (t.length >= 2 || t === "ai"));
+    if (!toks.length) return false;
+    if (words.length > 1 && toks.length === 1) return false;
+    if (toks.every((t) => WEAK.has(t) || t.length < 4)) return false;
+    if (!toks.every((t) => tokenIn(t, title, ""))) return false;
+    return tokensNear(title, toks);
+  }
+  function aliasHitsTitle(title, tag) {
+    const compact = title.replace(/ /g, "");
+    return aliases(tag).some((alias) => aliasHitsOne(title, compact, alias));
   }
   function tokens(q) {
     const key = String(q || "").trim().toLowerCase().replace(/[\s_]+/g, " ");
@@ -114,17 +277,61 @@
   }
   function tagMatched(row, tag) {
     const title = norm(row.title);
-    const page = norm(row.page + " " + row.url);
+    const compact = title.replace(/ /g, "");
+    const key = String(tag || "").trim().toLowerCase().replace(/[\s_]+/g, " ");
+    const negs = NEGATE[key] || [];
+    if (negs.some((neg) => title.includes(neg)) && !aliasHitsTitle(title, tag)) return false;
+    if (aliasHitsTitle(title, tag)) return true;
+    if (PHRASE_ONLY.has(key)) return false;
     const list = tokens(tag);
-    return list.length ? list.some((t) => tokenIn(t, title, page)) : false;
+    const strong = list.filter((t) => !WEAK.has(t) && t.length >= 4);
+    if (!strong.length) return false;
+    if (list.length && list.every((t) => tokenIn(t, title, ""))) return tokensNear(title, list);
+    return false;
+  }
+  function tagStrength(row, tag) {
+    if (!tagMatched(row, tag)) return 0;
+    const title = norm(row.title);
+    const compact = title.replace(/ /g, "");
+    for (const alias of aliases(tag)) {
+      const phrase = norm(alias);
+      if (phrase && title.includes(phrase)) return 3;
+      const glued = phrase.replace(/ /g, "");
+      if (phrase && glued.length >= 5 && compact.includes(glued)) return 3;
+    }
+    return 2;
+  }
+  function queryAsTags(query) {
+    const key = String(query || "").trim().toLowerCase().replace(/[\s_]+/g, " ");
+    if (ALIASES[key] || PHRASES[key]) return [key];
+    const blob = norm(query);
+    if (!blob) return [];
+    const found = [];
+    const names = Object.keys(ALIASES).sort((a, b) => b.length - a.length);
+    for (const name of names) {
+      for (const alias of aliases(name)) {
+        const phrase = norm(alias);
+        if (!phrase) continue;
+        const re = new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
+        if (re.test(blob)) {
+          found.push(name);
+          break;
+        }
+      }
+      if (found.length >= 4) break;
+    }
+    return found;
   }
   function rank(items, query, tags) {
-    if (tags && tags.length) {
+    let tagList = (tags || []).filter(Boolean);
+    if (!tagList.length) tagList = queryAsTags(query);
+    if (tagList.length) {
       const scored = items.map((row) => {
-        const hits = tags.reduce((n, tag) => n + (tagMatched(row, tag) ? 1 : 0), 0);
-        return { hits, row };
-      }).sort((a, b) => b.hits - a.hits);
-      const total = tags.length;
+        const hits = tagList.reduce((n, tag) => n + (tagMatched(row, tag) ? 1 : 0), 0);
+        const strength = tagList.reduce((n, tag) => n + tagStrength(row, tag), 0);
+        return { hits, strength, row };
+      }).sort((a, b) => b.hits - a.hits || b.strength - a.strength);
+      const total = tagList.length;
       const full = scored.filter((s) => s.hits >= total).map((s) => s.row);
       const almost = scored.filter((s) => s.hits >= Math.max(1, total - 1)).map((s) => s.row);
       const some = scored.filter((s) => s.hits > 0).map((s) => s.row);
@@ -136,18 +343,17 @@
     const needed = !list.length ? 0 : (list.length <= 3 ? list.length : Math.max(2, Math.ceil(list.length * 2 / 3)));
     const scored = items.map((row) => {
       const title = norm(row.title);
-      const page = norm(row.page + " " + row.url);
-      const hits = list.reduce((n, t) => n + (tokenIn(t, title, page) ? 1 : 0), 0);
-      return { hits, row };
-    }).sort((a, b) => b.hits - a.hits);
+      const titleHits = list.reduce((n, t) => n + (tokenIn(t, title, "") ? 1 : 0), 0);
+      return { titleHits, row };
+    }).sort((a, b) => b.titleHits - a.titleHits);
     if (!list.length) return scored.map((s) => s.row);
-    const strong = scored.filter((s) => s.hits >= needed).map((s) => s.row);
+    const strong = scored.filter((s) => s.titleHits >= needed).map((s) => s.row);
     if (strong.length) return strong;
     if (needed > 1) {
-      const close = scored.filter((s) => s.hits >= needed - 1).map((s) => s.row);
-      if (close.length) return close;
+      const softer = scored.filter((s) => s.titleHits >= needed - 1).map((s) => s.row);
+      if (softer.length) return softer;
     }
-    return scored.filter((s) => s.hits > 0).map((s) => s.row);
+    return scored.filter((s) => s.titleHits > 0).map((s) => s.row);
   }
 
   async function fetchText(url) {
@@ -338,7 +544,7 @@
       const daily = isDaily(query);
       const tagList = String(tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 5);
       let send = query;
-      if (!daily) send = tagList.length ? combine(tagList) : expand(query);
+      if (!daily) send = tagList.length ? focused(tagList) : expand(query);
       if (!send) send = "amateur";
       const jobs = (!source || source === "all" || !SITES[source]) ? ALL : [source];
       const results = await Promise.all(jobs.map(async (name) => {

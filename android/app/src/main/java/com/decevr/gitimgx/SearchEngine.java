@@ -16,7 +16,9 @@ import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -53,6 +55,19 @@ final class SearchEngine {
             "That search is blocked. GitVidX only shows legal, consensual, 18+ videos. "
                     + "No leaks, hidden cameras, or non-consensual content.";
     static final String DAILY_Q = "__daily__";
+    private static final Set<String> WEAK_SOLO = new HashSet<>(Arrays.asList(
+            "black", "dark", "red", "pink", "blue", "purple", "grey", "gray", "silver",
+            "large", "small", "medium", "big", "huge", "tiny", "little", "round", "full",
+            "close", "wide", "low", "side", "third", "two", "over", "looking", "from",
+            "behind", "against", "natural", "perky", "fake",
+            "tits", "tit", "boobs", "boob", "ass", "butt", "booty", "breasts", "breast"
+    ));
+    private static final Set<String> PHRASE_ONLY = new HashSet<>(Arrays.asList(
+            "amazon", "butterfly", "black hair", "pink hair", "blue hair", "purple hair",
+            "looking at camera", "over the shoulder", "fly on the wall", "third person",
+            "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line",
+            "anvil", "lotus"
+    ));
 
     String blockedQuery(String query) {
         if (query != null && BLOCK.matcher(query).find()) {
@@ -83,7 +98,7 @@ final class SearchEngine {
         if (isDaily(query)) {
             send = query;
         } else if (!tags.isEmpty()) {
-            send = combineSearchQuery(tags);
+            send = focusedSearchQuery(tags);
         } else {
             send = expandSearchQuery(query);
         }
@@ -234,6 +249,24 @@ final class SearchEngine {
         if (dashed.equals("home-made") || dashed.equals("homemade")) return "homemade";
         if (dashed.equals("teen") || dashed.equals("18-teen") || dashed.equals("18+-teen")) return "teen";
         if (dashed.equals("big-tits") || raw.equals("big tits")) return "big tits";
+        if (dashed.equals("tan-line") || dashed.equals("tanlines") || raw.equals("tan line")) return "tan line";
+        if (dashed.equals("small-tits") || dashed.equals("tiny-tits") || dashed.equals("tiny-boobs")
+                || dashed.equals("small-boobs") || dashed.equals("little-tits") || dashed.equals("flat-chest")
+                || raw.equals("small tits")) return "small tits";
+        if (dashed.equals("medium-tits") || dashed.equals("medium-boobs") || raw.equals("medium tits")) return "medium tits";
+        if (dashed.equals("large-tits") || dashed.equals("huge-tits") || dashed.equals("giant-tits")
+                || dashed.equals("massive-tits") || dashed.equals("huge-boobs") || dashed.equals("busty")
+                || raw.equals("large tits")) return "large tits";
+        if (dashed.equals("big-boobs") || raw.equals("big boobs")) return "big tits";
+        if (dashed.equals("natural-tits") || raw.equals("natural tits")) return "natural tits";
+        if (dashed.equals("perky-tits") || raw.equals("perky tits")) return "perky tits";
+        if (dashed.equals("large-ass") || dashed.equals("big-ass") || raw.equals("large ass")) return "large ass";
+        if (dashed.equals("round-ass") || raw.equals("round ass")) return "round ass";
+        if (dashed.equals("lap-dance") || dashed.equals("lapdance") || raw.equals("lap dance")) return "lap dance";
+        if (dashed.equals("strip-tease") || dashed.equals("striptease")) return "striptease";
+        if (dashed.equals("story-line") || dashed.equals("storyline")) return "storyline";
+        if (dashed.equals("full-movie") || raw.equals("full movie")) return "full movie";
+        if (dashed.equals("full-scene") || raw.equals("full scene")) return "full scene";
         if (dashed.equals("doggy") || dashed.equals("doggystyle") || dashed.equals("doggy-style")) return "doggy";
         if (dashed.equals("reverse-cowgirl") || dashed.equals("reversecowgirl") || raw.equals("reverse cowgirl")) return "reverse cowgirl";
         if (dashed.equals("prone-bone") || dashed.equals("pronebone") || raw.equals("prone bone")) return "prone bone";
@@ -288,6 +321,27 @@ final class SearchEngine {
             case "teen": return "teen";
             case "cheating": return "cheating wife";
             case "big tits": return "big tits";
+            case "tan line": return "tan lines";
+            case "small tits": return "small tits";
+            case "medium tits": return "medium tits";
+            case "large tits": return "huge tits";
+            case "natural tits": return "natural tits";
+            case "perky tits": return "perky tits";
+            case "large ass": return "big ass";
+            case "round ass": return "round ass";
+            case "petite": return "petite";
+            case "curvy": return "curvy";
+            case "thick": return "thick";
+            case "pawg": return "pawg";
+            case "cmnf": return "cmnf";
+            case "cfnm": return "cfnm";
+            case "lap dance": return "lap dance";
+            case "striptease": return "striptease";
+            case "oil": return "oiled";
+            case "massage": return "massage";
+            case "storyline": return "storyline";
+            case "full movie": return "full movie";
+            case "full scene": return "full scene";
             case "cuckold": return "cuckold";
             case "missionary": return "missionary";
             case "doggy": return "doggy style";
@@ -379,7 +433,28 @@ final class SearchEngine {
             case "hardcore": return java.util.Arrays.asList("hardcore");
             case "blowjob": return java.util.Arrays.asList("blowjob", "blow job", "bj");
             case "creampie": return java.util.Arrays.asList("creampie", "cream pie");
-            case "big tits": return java.util.Arrays.asList("big tits", "bigtits", "big boobs");
+            case "tan line": return java.util.Arrays.asList("tan line", "tanline", "tan lines", "tanlines");
+            case "small tits": return Arrays.asList("small tits", "small tit", "tiny tits", "tiny tit", "little tits", "small boobs", "tiny boobs", "little boobs", "small breasts", "tiny breasts", "flat chest", "small chest", "petite tits", "a cup");
+            case "medium tits": return Arrays.asList("medium tits", "medium boobs", "medium breasts", "average tits", "c cup", "medium sized tits");
+            case "large tits": return Arrays.asList("large tits", "huge tits", "big tits", "giant tits", "massive tits", "big boobs", "huge boobs", "massive boobs", "giant boobs", "big breasts", "huge breasts", "large breasts", "big naturals", "busty", "bigtits");
+            case "big tits": return Arrays.asList("big tits", "bigtits", "big boobs", "huge tits", "huge boobs", "big breasts");
+            case "natural tits": return Arrays.asList("natural tits", "natural breasts", "natural boobs", "naturals", "real tits");
+            case "perky tits": return Arrays.asList("perky tits", "perky breasts", "perky boobs");
+            case "large ass": return Arrays.asList("large ass", "big ass", "huge ass", "fat ass", "phat ass", "big booty", "huge booty", "bubble butt", "big butt");
+            case "round ass": return Arrays.asList("round ass", "round booty", "peach ass", "bubble butt");
+            case "petite": return java.util.Arrays.asList("petite");
+            case "curvy": return java.util.Arrays.asList("curvy");
+            case "thick": return java.util.Arrays.asList("thick");
+            case "pawg": return java.util.Arrays.asList("pawg");
+            case "cmnf": return java.util.Arrays.asList("cmnf", "clothed male naked female");
+            case "cfnm": return java.util.Arrays.asList("cfnm", "clothed female naked male");
+            case "lap dance": return java.util.Arrays.asList("lap dance", "lapdance");
+            case "striptease": return java.util.Arrays.asList("striptease", "strip tease");
+            case "oil": return java.util.Arrays.asList("oiled", "oil massage");
+            case "massage": return java.util.Arrays.asList("massage");
+            case "storyline": return java.util.Arrays.asList("storyline", "story line");
+            case "full movie": return java.util.Arrays.asList("full movie", "full length");
+            case "full scene": return java.util.Arrays.asList("full scene");
             case "asian": return java.util.Arrays.asList("asian");
             case "latina": return java.util.Arrays.asList("latina", "latin");
             case "threesome": return java.util.Arrays.asList("threesome");
@@ -389,17 +464,17 @@ final class SearchEngine {
             case "cuckold": return java.util.Arrays.asList("cuckold", "cuckolding");
             case "missionary": return java.util.Arrays.asList("missionary");
             case "doggy": return java.util.Arrays.asList("doggy", "doggy style", "doggystyle", "from behind");
-            case "cowgirl": return java.util.Arrays.asList("cowgirl", "riding");
-            case "reverse cowgirl": return java.util.Arrays.asList("reverse cowgirl", "reversecowgirl");
+            case "cowgirl": return Arrays.asList("cowgirl", "cow girl");
+            case "reverse cowgirl": return Arrays.asList("reverse cowgirl", "reversecowgirl");
             case "spooning": return java.util.Arrays.asList("spooning", "spoon");
             case "standing": return java.util.Arrays.asList("standing", "standing sex", "standing fuck");
             case "69": return java.util.Arrays.asList("69", "sixty nine");
             case "prone bone": return java.util.Arrays.asList("prone bone", "pronebone");
             case "mating press": return java.util.Arrays.asList("mating press", "matingpress");
-            case "lotus": return java.util.Arrays.asList("lotus", "lotus position");
-            case "piledriver": return java.util.Arrays.asList("piledriver");
-            case "butterfly": return java.util.Arrays.asList("butterfly", "butterfly position");
-            case "amazon": return java.util.Arrays.asList("amazon", "amazon position");
+            case "lotus": return Arrays.asList("lotus position", "lotus pose");
+            case "piledriver": return Arrays.asList("piledriver", "pile driver");
+            case "butterfly": return Arrays.asList("butterfly position", "butterfly pose");
+            case "amazon": return Arrays.asList("amazon position", "amazon pose");
             case "wheelbarrow": return java.util.Arrays.asList("wheelbarrow");
             case "anvil": return java.util.Arrays.asList("anvil", "anvil position");
             case "facesitting": return java.util.Arrays.asList("facesitting", "face sitting", "queening");
@@ -412,8 +487,8 @@ final class SearchEngine {
             case "chair": return java.util.Arrays.asList("chair sex", "chair fuck");
             case "michigan": return java.util.Arrays.asList("michigan", "michigan sex");
             case "slipped in": return java.util.Arrays.asList("slipped it in", "accidentally slipped it in", "accidentally slipped in", "accidental slip");
-            case "redhead": return java.util.Arrays.asList("redhead", "red hair", "ginger");
-            case "black hair": return java.util.Arrays.asList("black hair", "dark hair");
+            case "redhead": return Arrays.asList("redhead", "red hair", "red haired", "ginger");
+            case "black hair": return Arrays.asList("black hair", "black haired", "dark hair", "jet black hair");
             case "auburn": return java.util.Arrays.asList("auburn");
             case "platinum": return java.util.Arrays.asList("platinum blonde", "platinum");
             case "grey": return java.util.Arrays.asList("grey hair", "gray hair", "silver hair");
@@ -422,11 +497,11 @@ final class SearchEngine {
             case "purple hair": return java.util.Arrays.asList("purple hair");
             case "cellphone": return java.util.Arrays.asList("cellphone", "phone video", "mobile video");
             case "snapchat": return java.util.Arrays.asList("snapchat");
-            case "hotel": return java.util.Arrays.asList("hotel sex", "hotel");
-            case "motel": return java.util.Arrays.asList("motel sex", "motel");
-            case "car": return java.util.Arrays.asList("car sex", "car fuck");
-            case "public": return java.util.Arrays.asList("public sex", "public");
-            case "sneaky": return java.util.Arrays.asList("sneaky sex", "sneaky");
+            case "hotel": return Arrays.asList("hotel sex", "hotel room", "hotel fuck");
+            case "motel": return Arrays.asList("motel sex", "motel room", "motel fuck");
+            case "car": return Arrays.asList("car sex", "car fuck", "in the car", "backseat", "back seat");
+            case "public": return Arrays.asList("public sex", "public fuck", "in public");
+            case "sneaky": return Arrays.asList("sneaky sex", "sneaky fuck", "sneaky");
             case "quickie": return java.util.Arrays.asList("quickie");
             case "tramp stamp": return java.util.Arrays.asList("tramp stamp");
             case "delivery guy": return java.util.Arrays.asList("delivery guy", "delivery man");
@@ -526,10 +601,88 @@ final class SearchEngine {
                 String key = word.toLowerCase(Locale.US);
                 if (key.isEmpty() || isStop(key)) continue;
                 words.add(word);
-                if (words.size() >= 6) return String.join(" ", words);
+                if (words.size() >= 5) return String.join(" ", words);
             }
         }
         return String.join(" ", words);
+    }
+
+    private int focusScore(String tag) {
+        int score = distinctiveTokens(tag).stream().mapToInt(String::length).sum();
+        if (expandSearchQuery(tag).contains(" ")) score += 4;
+        String key = canonQuery(tag);
+        if (key.equals("cellphone") || key.equals("snapchat") || key.equals("homemade") || key.equals("amateur")
+                || key.equals("onlyfans") || key.equals("ai") || key.equals("pov")
+                || key.equals("fly on the wall") || key.equals("third person") || key.equals("close up")
+                || key.equals("full body") || key.equals("overhead") || key.equals("low angle")
+                || key.equals("side view") || key.equals("behind camera") || key.equals("face cam")
+                || key.equals("looking at camera") || key.equals("mirror") || key.equals("handheld")
+                || key.equals("tripod") || key.equals("gopro") || key.equals("selfie cam")
+                || key.equals("two camera") || key.equals("cinematic") || key.equals("over the shoulder")
+                || key.equals("wide shot")) {
+            score -= 8;
+        }
+        return score;
+    }
+
+    private String focusedSearchQuery(List<String> tags) {
+        List<String> ranked = new ArrayList<>(tags);
+        ranked.sort((a, b) -> Integer.compare(focusScore(b), focusScore(a)));
+        LinkedHashSet<String> phrases = new LinkedHashSet<>();
+        for (int i = 0; i < ranked.size() && phrases.size() < 2; i++) {
+            String phrase = expandSearchQuery(ranked.get(i));
+            if (phrase != null && !phrase.trim().isEmpty()) phrases.add(phrase);
+        }
+        if (!phrases.isEmpty()) return String.join(" ", phrases);
+        return combineSearchQuery(ranked.subList(0, Math.min(3, ranked.size())));
+    }
+
+    private boolean tokensNear(String title, List<String> toks) {
+        if (toks.size() <= 1) return true;
+        List<Integer> starts = new ArrayList<>();
+        for (String tok : toks) {
+            Matcher match = Pattern.compile("\\b" + Pattern.quote(tok) + "\\b").matcher(title);
+            if (!match.find()) return true;
+            starts.add(match.start());
+        }
+        int min = starts.get(0);
+        int max = starts.get(0);
+        int extra = 0;
+        for (int i = 0; i < starts.size(); i++) {
+            min = Math.min(min, starts.get(i));
+            max = Math.max(max, starts.get(i));
+            extra += toks.get(i).length();
+        }
+        return max - min <= 28 + extra;
+    }
+
+    private boolean aliasHitsTitle(String title, String compact, String alias) {
+        String phrase = alias.toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
+        if (phrase.isEmpty()) return false;
+        if (!phrase.contains(" ")) {
+            if (Pattern.compile("\\b" + Pattern.quote(phrase) + "\\b").matcher(title).find()) return true;
+        } else if (title.contains(phrase)) return true;
+        String glued = phrase.replace(" ", "");
+        if (glued.length() >= 5 && compact.contains(glued)) return true;
+        List<String> words = new ArrayList<>();
+        List<String> toks = new ArrayList<>();
+        for (String tok : phrase.split("\\s+")) {
+            if (tok.isEmpty()) continue;
+            words.add(tok);
+            if (isStop(tok)) continue;
+            if (tok.length() >= 2 || tok.equals("ai")) toks.add(tok);
+        }
+        if (toks.isEmpty()) return false;
+        if (words.size() > 1 && toks.size() == 1) return false;
+        boolean onlyWeak = true;
+        for (String tok : toks) {
+            if (!WEAK_SOLO.contains(tok) && tok.length() >= 4) onlyWeak = false;
+        }
+        if (onlyWeak) return false;
+        for (String tok : toks) {
+            if (!tokenInItem(tok, title, "", compact)) return false;
+        }
+        return tokensNear(title, toks);
     }
 
     private List<String> distinctiveTokens(String query) {
@@ -557,17 +710,115 @@ final class SearchEngine {
         return word.matcher(page).find();
     }
 
+    private List<String> negateFor(String key) {
+        switch (key) {
+            case "small tits":
+                return Arrays.asList("huge tits", "massive tits", "enormous tits", "giant tits", "big tits", "large tits", "huge boobs", "massive boobs", "big boobs");
+            case "large tits":
+            case "big tits":
+                return Arrays.asList("small tits", "tiny tits", "flat chest", "little tits", "small boobs", "tiny boobs");
+            case "medium tits":
+                return Arrays.asList("huge tits", "massive tits", "giant tits", "tiny tits", "flat chest");
+            case "large ass":
+                return Arrays.asList("flat ass", "no ass", "skinny ass");
+            case "round ass":
+                return Arrays.asList("flat ass");
+            case "petite":
+                return Arrays.asList("bbw", "ssbbw", "plus size");
+            case "natural tits":
+                return Arrays.asList("fake tits", "fake boobs", "implants", "fake breasts");
+            case "blonde":
+                return Arrays.asList("brunette", "redhead", "ginger", "black hair", "brown hair");
+            case "brunette":
+                return Arrays.asList("blonde", "blond", "redhead", "ginger", "platinum");
+            case "redhead":
+                return Arrays.asList("blonde", "blond", "brunette", "black hair", "platinum");
+            case "black hair":
+                return Arrays.asList("blonde", "blond", "redhead", "ginger", "platinum");
+            case "platinum":
+                return Arrays.asList("brunette", "redhead", "ginger", "black hair", "brown hair");
+            default:
+                return new ArrayList<>();
+        }
+    }
+
+    private List<String> tagAliasList(String tag) {
+        String key = canonQuery(tag);
+        LinkedHashSet<String> aliases = new LinkedHashSet<>(categoryPhrases(key));
+        if (!PHRASE_ONLY.contains(key)) aliases.add(key);
+        aliases.add(expandSearchQuery(tag));
+        return new ArrayList<>(aliases);
+    }
+
     private boolean tagMatched(JSONObject item, String tag) {
         String title = item.optString("title").toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
-        String page = (item.optString("page") + " " + item.optString("url"))
-                .toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
         String compact = title.replace(" ", "");
-        List<String> tokens = distinctiveTokens(tag);
-        if (tokens.isEmpty()) return relevanceScore(item, rankingTerms(tag)) >= 6;
-        for (String token : tokens) {
-            if (tokenInItem(token, title, page, compact)) return true;
+        String key = canonQuery(tag);
+        List<String> aliases = tagAliasList(tag);
+        boolean aliasHit = false;
+        for (String alias : aliases) {
+            if (aliasHitsTitle(title, compact, alias)) {
+                aliasHit = true;
+                break;
+            }
         }
-        return false;
+        for (String neg : negateFor(key)) {
+            if (title.contains(neg) && !aliasHit) return false;
+        }
+        if (aliasHit) return true;
+        if (PHRASE_ONLY.contains(key)) return false;
+        List<String> tokens = distinctiveTokens(tag);
+        boolean strong = false;
+        for (String token : tokens) {
+            if (!WEAK_SOLO.contains(token) && token.length() >= 4) strong = true;
+        }
+        if (!strong) return false;
+        for (String token : tokens) {
+            if (!tokenInItem(token, title, "", compact)) return false;
+        }
+        return tokensNear(title, tokens);
+    }
+
+    private int tagStrength(JSONObject item, String tag) {
+        if (!tagMatched(item, tag)) return 0;
+        String title = item.optString("title").toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
+        String compact = title.replace(" ", "");
+        for (String alias : tagAliasList(tag)) {
+            String phrase = alias.toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
+            if (!phrase.isEmpty() && title.contains(phrase)) return 3;
+            String glued = phrase.replace(" ", "");
+            if (!phrase.isEmpty() && glued.length() >= 5 && compact.contains(glued)) return 3;
+        }
+        return 2;
+    }
+
+    private List<String> queryAsTags(String query) {
+        String key = canonQuery(query);
+        if (!categoryPhrases(key).isEmpty()) return Arrays.asList(key);
+        String blob = (query == null ? "" : query).toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
+        List<String> found = new ArrayList<>();
+        if (blob.isEmpty()) return found;
+        String[] names = {
+                "small tits", "large tits", "big tits", "medium tits", "natural tits", "perky tits",
+                "large ass", "round ass", "black hair", "pink hair", "blue hair", "purple hair",
+                "step-sis", "tramp stamp", "delivery guy", "maintenance man", "fly on the wall",
+                "looking at camera", "over the shoulder", "third person", "behind camera",
+                "full movie", "full scene", "reverse cowgirl", "prone bone", "mating press",
+                "blonde", "brunette", "redhead", "platinum", "hotel", "motel", "car", "public",
+                "homemade", "onlyfans", "cellphone", "snapchat", "petite", "socks", "amateur"
+        };
+        for (String name : names) {
+            for (String alias : tagAliasList(name)) {
+                String phrase = alias.toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
+                if (phrase.isEmpty()) continue;
+                if (Pattern.compile("\\b" + Pattern.quote(phrase) + "\\b").matcher(blob).find()) {
+                    if (!found.contains(name)) found.add(name);
+                    break;
+                }
+            }
+            if (found.size() >= 4) break;
+        }
+        return found;
     }
 
     private List<String> parseTags(String raw) {
@@ -583,26 +834,34 @@ final class SearchEngine {
     }
 
     private List<JSONObject> rankItems(List<JSONObject> items, String query, List<String> tags) {
-        if (tags != null && !tags.isEmpty()) {
+        List<String> tagList = tags == null ? new ArrayList<>() : new ArrayList<>(tags);
+        if (tagList.isEmpty()) tagList.addAll(queryAsTags(query));
+        if (!tagList.isEmpty()) {
             LinkedHashSet<String> all = new LinkedHashSet<>();
-            for (String tag : tags) all.addAll(rankingTerms(tag));
+            for (String tag : tagList) all.addAll(rankingTerms(tag));
             List<String> terms = new ArrayList<>(all);
             List<int[]> ranks = new ArrayList<>();
             for (int i = 0; i < items.size(); i++) {
                 JSONObject item = items.get(i);
                 int hits = 0;
-                for (String tag : tags) {
+                int strength = 0;
+                for (String tag : tagList) {
                     if (tagMatched(item, tag)) hits += 1;
+                    strength += tagStrength(item, tag);
                 }
-                ranks.add(new int[]{hits, relevanceScore(item, terms), i});
+                ranks.add(new int[]{hits, strength, relevanceScore(item, terms) + strength * 3, i});
             }
-            ranks.sort((a, b) -> a[0] != b[0] ? Integer.compare(b[0], a[0]) : Integer.compare(b[1], a[1]));
-            int total = tags.size();
+            ranks.sort((a, b) -> {
+                if (a[0] != b[0]) return Integer.compare(b[0], a[0]);
+                if (a[1] != b[1]) return Integer.compare(b[1], a[1]);
+                return Integer.compare(b[2], a[2]);
+            });
+            int total = tagList.size();
             List<JSONObject> full = new ArrayList<>();
             List<JSONObject> almost = new ArrayList<>();
             List<JSONObject> some = new ArrayList<>();
             for (int[] row : ranks) {
-                JSONObject item = items.get(row[2]);
+                JSONObject item = items.get(row[3]);
                 if (row[0] >= total) full.add(item);
                 if (row[0] >= Math.max(1, total - 1)) almost.add(item);
                 if (row[0] > 0) some.add(item);
@@ -621,16 +880,17 @@ final class SearchEngine {
         for (int i = 0; i < items.size(); i++) {
             JSONObject item = items.get(i);
             String title = item.optString("title").toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
-            String page = (item.optString("page") + " " + item.optString("url"))
-                    .toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", " ").trim();
             String compact = title.replace(" ", "");
-            int hits = 0;
+            int titleHits = 0;
             for (String token : tokens) {
-                if (tokenInItem(token, title, page, compact)) hits += 1;
+                if (tokenInItem(token, title, "", compact)) titleHits += 1;
             }
-            ranks.add(new int[]{hits, relevanceScore(item, terms), i});
+            ranks.add(new int[]{titleHits, relevanceScore(item, terms) + titleHits * 4, i});
         }
-        ranks.sort((a, b) -> a[0] != b[0] ? Integer.compare(b[0], a[0]) : Integer.compare(b[1], a[1]));
+        ranks.sort((a, b) -> {
+            if (a[0] != b[0]) return Integer.compare(b[0], a[0]);
+            return Integer.compare(b[1], a[1]);
+        });
         if (tokens.isEmpty()) {
             List<JSONObject> all = new ArrayList<>();
             for (int[] row : ranks) all.add(items.get(row[2]));
@@ -638,16 +898,16 @@ final class SearchEngine {
         }
         int needed = tokens.size() <= 3 ? tokens.size() : Math.max(2, (tokens.size() * 2 + 2) / 3);
         List<JSONObject> strong = new ArrayList<>();
-        List<JSONObject> close = new ArrayList<>();
+        List<JSONObject> softer = new ArrayList<>();
         List<JSONObject> some = new ArrayList<>();
         for (int[] row : ranks) {
             JSONObject item = items.get(row[2]);
             if (row[0] >= needed) strong.add(item);
-            if (needed > 1 && row[0] >= needed - 1) close.add(item);
+            if (needed > 1 && row[0] >= needed - 1) softer.add(item);
             if (row[0] > 0) some.add(item);
         }
         if (!strong.isEmpty()) return strong;
-        if (!close.isEmpty()) return close;
+        if (!softer.isEmpty()) return softer;
         return some;
     }
 

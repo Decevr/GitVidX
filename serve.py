@@ -98,92 +98,128 @@ STOP_WORDS = {
 }
 
 CATEGORY_ALIASES: dict[str, list[str]] = {
-    "amateur": ["amateur"],
+    "amateur": ["amateur", "real amateur"],
     "milf": ["milf"],
-    "lesbian": ["lesbian"],
-    "blonde": ["blonde", "blond"],
-    "brunette": ["brunette"],
+    "lesbian": ["lesbian", "lesbians", "girl on girl"],
+    "blonde": ["blonde", "blond", "blonde hair", "blond hair"],
+    "brunette": ["brunette", "brown hair", "brown haired"],
     "anal": ["anal"],
-    "pov": ["pov"],
-    "solo": ["solo", "masturbation"],
+    "pov": ["pov", "point of view"],
+    "solo": ["solo", "masturbation", "masturbating"],
     "hardcore": ["hardcore"],
-    "blowjob": ["blowjob", "blow job", "bj"],
+    "blowjob": ["blowjob", "blow job", "bj", "cock sucking"],
     "creampie": ["creampie", "cream pie"],
-    "big tits": ["big tits", "bigtits", "big boobs"],
+    "big tits": ["big tits", "bigtits", "big boobs", "huge tits", "huge boobs", "big breasts"],
+    "tan line": ["tan line", "tanline", "tan lines", "tanlines"],
+    "small tits": [
+        "small tits", "small tit", "tiny tits", "tiny tit", "little tits",
+        "small boobs", "tiny boobs", "little boobs", "small breasts",
+        "tiny breasts", "flat chest", "small chest", "petite tits", "a cup",
+    ],
+    "medium tits": [
+        "medium tits", "medium boobs", "medium breasts", "average tits",
+        "c cup", "medium sized tits",
+    ],
+    "large tits": [
+        "large tits", "huge tits", "big tits", "giant tits", "massive tits",
+        "big boobs", "huge boobs", "massive boobs", "giant boobs",
+        "big breasts", "huge breasts", "large breasts", "big naturals",
+        "busty", "bigtits",
+    ],
+    "natural tits": ["natural tits", "natural breasts", "natural boobs", "naturals", "real tits"],
+    "perky tits": ["perky tits", "perky breasts", "perky boobs"],
+    "large ass": [
+        "large ass", "big ass", "huge ass", "fat ass", "phat ass",
+        "big booty", "huge booty", "bubble butt", "big butt",
+    ],
+    "round ass": ["round ass", "round booty", "peach ass", "bubble butt"],
+    "petite": ["petite"],
+    "curvy": ["curvy", "curvy body"],
+    "thick": ["thick", "thicc"],
+    "pawg": ["pawg"],
+    "cmnf": ["cmnf", "clothed male naked female"],
+    "cfnm": ["cfnm", "clothed female naked male"],
+    "lap dance": ["lap dance", "lapdance"],
+    "striptease": ["striptease", "strip tease"],
+    "oil": ["oiled", "oil massage", "oiled up", "oily"],
+    "massage": ["massage"],
+    "storyline": ["storyline", "story line", "plot"],
+    "full movie": ["full movie", "full length", "feature length"],
+    "full scene": ["full scene", "complete scene"],
     "asian": ["asian"],
-    "latina": ["latina", "latin"],
-    "threesome": ["threesome", "threesom"],
-    "feet": ["feet", "foot fetish", "footjob"],
-    "socks": ["socks", "sock", "sockjob", "sock fetish"],
-    "cheating": ["cheating", "cheating wife"],
-    "cuckold": ["cuckold", "cuckolding"],
-    "teen": ["teen", "18 teen"],
+    "latina": ["latina", "latin", "hispanic"],
+    "threesome": ["threesome", "threesom", "ffm", "mmf", "3some"],
+    "feet": ["feet", "foot fetish", "footjob", "soles"],
+    "socks": ["socks", "sock", "sockjob", "sock fetish", "ankle socks", "white socks"],
+    "cheating": ["cheating", "cheating wife", "cheats", "affair"],
+    "cuckold": ["cuckold", "cuckolding", "cuck"],
+    "teen": ["teen", "18 teen", "18 year", "barely 18"],
     "step-sis": ["stepsister", "step sister", "step-sister", "stepsis", "step sis", "step-sis"],
-    "homemade": ["homemade", "home made", "homemade amateur"],
+    "homemade": ["homemade", "home made", "homemade amateur", "real homemade"],
     "onlyfans": ["onlyfans", "only fans", "only-fans"],
-    "ai": ["ai generated", "ai porn", "ai generated porn"],
+    "ai": ["ai generated", "ai porn", "ai generated porn", "artificial intelligence"],
     "missionary": ["missionary"],
-    "doggy": ["doggy", "doggy style", "doggystyle", "from behind"],
-    "cowgirl": ["cowgirl", "riding"],
+    "doggy": ["doggy", "doggy style", "doggystyle", "doggyestyle"],
+    "cowgirl": ["cowgirl", "cow girl"],
     "reverse cowgirl": ["reverse cowgirl", "reversecowgirl"],
-    "spooning": ["spooning", "spoon"],
-    "standing": ["standing", "standing sex", "standing fuck"],
-    "69": ["69", "sixty nine"],
+    "spooning": ["spooning", "spoon fuck"],
+    "standing": ["standing sex", "standing fuck", "standing doggy"],
+    "69": ["69", "sixty nine", "sixtynine"],
     "prone bone": ["prone bone", "pronebone"],
     "mating press": ["mating press", "matingpress"],
-    "lotus": ["lotus", "lotus position"],
-    "piledriver": ["piledriver"],
-    "butterfly": ["butterfly", "butterfly position"],
-    "amazon": ["amazon", "amazon position"],
+    "lotus": ["lotus position", "lotus pose"],
+    "piledriver": ["piledriver", "pile driver"],
+    "butterfly": ["butterfly position", "butterfly pose"],
+    "amazon": ["amazon position", "amazon pose"],
     "wheelbarrow": ["wheelbarrow"],
-    "anvil": ["anvil", "anvil position"],
+    "anvil": ["anvil position", "anvil pose"],
     "facesitting": ["facesitting", "face sitting", "queening"],
     "scissoring": ["scissoring", "scissor"],
     "sideways": ["sideways", "side fuck", "on the side"],
-    "legs up": ["legs up", "legs in the air"],
-    "bent over": ["bent over", "bend over"],
+    "legs up": ["legs up", "legs in the air", "legs over"],
+    "bent over": ["bent over", "bend over", "bending over"],
     "full nelson": ["full nelson"],
-    "against wall": ["against the wall", "wall sex", "pinned to the wall"],
-    "chair": ["chair sex", "chair fuck"],
-    "michigan": ["michigan", "michigan sex"],
+    "against wall": ["against the wall", "wall sex", "pinned to the wall", "against wall"],
+    "chair": ["chair sex", "chair fuck", "on the chair"],
+    "michigan": ["michigan", "michigan sex", "michigan position"],
     "slipped in": ["slipped it in", "accidentally slipped it in", "accidentally slipped in", "accidental slip"],
-    "redhead": ["redhead", "red hair", "ginger"],
-    "black hair": ["black hair", "dark hair"],
-    "auburn": ["auburn"],
-    "platinum": ["platinum blonde", "platinum"],
-    "grey": ["grey hair", "gray hair", "silver hair"],
-    "pink hair": ["pink hair"],
-    "blue hair": ["blue hair"],
-    "purple hair": ["purple hair"],
-    "cellphone": ["cellphone", "phone video", "mobile video"],
-    "snapchat": ["snapchat"],
-    "hotel": ["hotel sex", "hotel"],
-    "motel": ["motel sex", "motel"],
-    "car": ["car sex", "car fuck"],
-    "public": ["public sex", "public"],
-    "sneaky": ["sneaky sex", "sneaky"],
-    "quickie": ["quickie"],
-    "tramp stamp": ["tramp stamp"],
-    "delivery guy": ["delivery guy", "delivery man"],
-    "maintenance man": ["maintenance man", "handyman"],
+    "redhead": ["redhead", "red hair", "red haired", "ginger"],
+    "black hair": ["black hair", "black haired", "dark hair", "jet black hair"],
+    "auburn": ["auburn", "auburn hair"],
+    "platinum": ["platinum blonde", "platinum blond", "platinum hair", "platinum"],
+    "grey": ["grey hair", "gray hair", "silver hair", "granny hair"],
+    "pink hair": ["pink hair", "pink haired"],
+    "blue hair": ["blue hair", "blue haired"],
+    "purple hair": ["purple hair", "purple haired"],
+    "cellphone": ["cellphone", "cell phone", "phone video", "mobile video", "iphone video"],
+    "snapchat": ["snapchat", "snap chat"],
+    "hotel": ["hotel sex", "hotel room", "hotel fuck"],
+    "motel": ["motel sex", "motel room", "motel fuck"],
+    "car": ["car sex", "car fuck", "in the car", "backseat", "back seat"],
+    "public": ["public sex", "public fuck", "in public"],
+    "sneaky": ["sneaky sex", "sneaky fuck", "sneaky"],
+    "quickie": ["quickie", "quick fuck"],
+    "tramp stamp": ["tramp stamp", "lower back tattoo"],
+    "delivery guy": ["delivery guy", "delivery man", "pizza guy"],
+    "maintenance man": ["maintenance man", "handyman", "repair man", "plumber"],
     "fly on the wall": ["fly on the wall", "fly-on-the-wall", "third person camera"],
     "third person": ["third person", "third person view"],
     "close up": ["close up", "close-up", "closeup"],
     "full body": ["full body", "fullbody"],
-    "overhead": ["overhead view", "top down", "birds eye"],
-    "low angle": ["low angle"],
+    "overhead": ["overhead view", "top down", "birds eye", "bird's eye"],
+    "low angle": ["low angle", "low-angle"],
     "side view": ["side view", "side angle"],
-    "behind camera": ["camera from behind", "shot from behind"],
+    "behind camera": ["camera from behind", "shot from behind", "from behind camera"],
     "face cam": ["face cam", "facecam"],
-    "looking at camera": ["looking at camera", "looks at camera"],
-    "mirror": ["mirror fuck", "mirror sex"],
+    "looking at camera": ["looking at camera", "looks at camera", "look at camera"],
+    "mirror": ["mirror fuck", "mirror sex", "in the mirror"],
     "handheld": ["handheld camera", "handheld"],
-    "tripod": ["tripod"],
-    "gopro": ["gopro"],
-    "selfie cam": ["selfie", "front camera"],
+    "tripod": ["tripod", "tripod camera"],
+    "gopro": ["gopro", "go pro"],
+    "selfie cam": ["selfie", "front camera", "selfie cam"],
     "two camera": ["two camera", "dual camera", "multi cam"],
     "cinematic": ["cinematic"],
-    "over the shoulder": ["over the shoulder"],
+    "over the shoulder": ["over the shoulder", "over-the-shoulder"],
     "wide shot": ["wide shot", "wide angle"],
 }
 
@@ -200,6 +236,27 @@ SEARCH_PHRASE: dict[str, str] = {
     "blowjob": "blowjob",
     "creampie": "creampie",
     "big tits": "big tits",
+    "tan line": "tan lines",
+    "small tits": "small tits",
+    "medium tits": "medium tits",
+    "large tits": "huge tits",
+    "natural tits": "natural tits",
+    "perky tits": "perky tits",
+    "large ass": "big ass",
+    "round ass": "round ass",
+    "petite": "petite",
+    "curvy": "curvy",
+    "thick": "thick",
+    "pawg": "pawg",
+    "cmnf": "cmnf",
+    "cfnm": "cfnm",
+    "lap dance": "lap dance",
+    "striptease": "striptease",
+    "oil": "oiled",
+    "massage": "massage",
+    "storyline": "storyline",
+    "full movie": "full movie",
+    "full scene": "full scene",
     "asian": "asian",
     "latina": "latina",
     "threesome": "threesome",
@@ -292,6 +349,34 @@ CANON_KEYS = {
     "18+-teen": "teen",
     "teen": "teen",
     "big-tits": "big tits",
+    "tan-line": "tan line",
+    "tanlines": "tan line",
+    "small-tits": "small tits",
+    "tiny-tits": "small tits",
+    "tiny-boobs": "small tits",
+    "small-boobs": "small tits",
+    "little-tits": "small tits",
+    "flat-chest": "small tits",
+    "medium-tits": "medium tits",
+    "medium-boobs": "medium tits",
+    "large-tits": "large tits",
+    "huge-tits": "large tits",
+    "giant-tits": "large tits",
+    "massive-tits": "large tits",
+    "huge-boobs": "large tits",
+    "big-boobs": "big tits",
+    "busty": "large tits",
+    "natural-tits": "natural tits",
+    "perky-tits": "perky tits",
+    "large-ass": "large ass",
+    "big-ass": "large ass",
+    "round-ass": "round ass",
+    "lap-dance": "lap dance",
+    "lapdance": "lap dance",
+    "strip-tease": "striptease",
+    "story-line": "storyline",
+    "full-movie": "full movie",
+    "full-scene": "full scene",
     "cuckold": "cuckold",
     "doggy": "doggy",
     "doggystyle": "doggy",
@@ -445,9 +530,122 @@ def combine_search_query(tags: list[str]) -> str:
                 continue
             seen.add(key)
             words.append(word)
-            if len(words) >= 6:
+            if len(words) >= 5:
                 return " ".join(words)
     return " ".join(words)
+
+
+STYLE_OR_CAMERA = {
+    "cellphone", "snapchat", "homemade", "amateur", "onlyfans", "ai", "pov",
+    "fly on the wall", "third person", "close up", "full body", "overhead",
+    "low angle", "side view", "behind camera", "face cam", "looking at camera",
+    "mirror", "handheld", "tripod", "gopro", "selfie cam", "two camera",
+    "cinematic", "over the shoulder", "wide shot",
+}
+
+
+def focused_search_query(tags: list[str]) -> str:
+    def spec(tag: str) -> int:
+        score = sum(len(tok) for tok in distinctive_tokens(tag))
+        if " " in expand_search_query(tag):
+            score += 4
+        if canon_query(tag) in STYLE_OR_CAMERA:
+            score -= 8
+        return score
+
+    ranked = sorted(tags, key=spec, reverse=True)
+    phrases: list[str] = []
+    seen: set[str] = set()
+    for tag in ranked[:2]:
+        phrase = expand_search_query(tag)
+        key = phrase.lower()
+        if phrase and key not in seen:
+            seen.add(key)
+            phrases.append(phrase)
+    return " ".join(phrases) or combine_search_query(ranked[:3])
+
+
+WEAK_SOLO = {
+    "black", "dark", "red", "pink", "blue", "purple", "grey", "gray", "silver",
+    "large", "small", "medium", "big", "huge", "tiny", "little", "round", "full",
+    "close", "wide", "low", "side", "third", "two", "over", "looking", "from",
+    "behind", "against", "natural", "perky", "fake",
+    "tits", "tit", "boobs", "boob", "ass", "butt", "booty", "breasts", "breast",
+}
+
+PHRASE_ONLY = {
+    "amazon", "butterfly", "black hair", "pink hair", "blue hair", "purple hair",
+    "looking at camera", "over the shoulder", "fly on the wall", "third person",
+    "behind camera", "delivery guy", "maintenance man", "tramp stamp", "tan line",
+    "anvil", "lotus",
+}
+
+NEGATE = {
+    "small tits": (
+        "huge tits", "massive tits", "enormous tits", "giant tits",
+        "big tits", "large tits", "huge boobs", "massive boobs", "big boobs",
+    ),
+    "large tits": ("small tits", "tiny tits", "flat chest", "little tits", "small boobs", "tiny boobs"),
+    "big tits": ("small tits", "tiny tits", "flat chest", "little tits", "small boobs", "tiny boobs"),
+    "medium tits": ("huge tits", "massive tits", "giant tits", "tiny tits", "flat chest"),
+    "large ass": ("flat ass", "no ass", "skinny ass"),
+    "round ass": ("flat ass",),
+    "petite": ("bbw", "ssbbw", "plus size"),
+    "natural tits": ("fake tits", "fake boobs", "implants", "fake breasts"),
+    "blonde": ("brunette", "redhead", "ginger", "black hair", "brown hair"),
+    "brunette": ("blonde", "blond", "redhead", "ginger", "platinum"),
+    "redhead": ("blonde", "blond", "brunette", "black hair", "platinum"),
+    "black hair": ("blonde", "blond", "redhead", "ginger", "platinum"),
+    "platinum": ("brunette", "redhead", "ginger", "black hair", "brown hair"),
+}
+
+
+def tag_aliases(tag: str) -> list[str]:
+    key = canon_query(tag)
+    aliases = list(CATEGORY_ALIASES.get(key, []))
+    if key not in PHRASE_ONLY:
+        aliases.append(key)
+    expanded = expand_search_query(tag)
+    if expanded and expanded.lower() not in {a.lower() for a in aliases}:
+        aliases.append(expanded)
+    return list(dict.fromkeys(aliases))
+
+
+def tokens_near(title: str, toks: list[str], window: int = 28) -> bool:
+    if len(toks) <= 1:
+        return True
+    starts: list[int] = []
+    for tok in toks:
+        match = re.search(rf"\b{re.escape(tok)}\b", title)
+        if not match:
+            return True
+        starts.append(match.start())
+    return max(starts) - min(starts) <= window + sum(len(tok) for tok in toks)
+
+
+def alias_hits_title(title: str, compact: str, alias: str) -> bool:
+    phrase = re.sub(r"[^a-z0-9]+", " ", alias.lower()).strip()
+    if not phrase:
+        return False
+    if " " not in phrase:
+        if re.search(rf"\b{re.escape(phrase)}\b", title):
+            return True
+    elif phrase in title:
+        return True
+    glued = phrase.replace(" ", "")
+    if len(glued) >= 5 and glued in compact:
+        return True
+    words = [tok for tok in phrase.split() if tok]
+    toks = [tok for tok in words if tok not in STOP_WORDS and (len(tok) >= 2 or tok == "ai")]
+    if not toks:
+        return False
+    if len(words) > 1 and len(toks) == 1:
+        return False
+    if all(tok in WEAK_SOLO or len(tok) < 4 for tok in toks):
+        return False
+    if not all(token_in_item(tok, title, "", compact) for tok in toks):
+        return False
+    return tokens_near(title, toks)
 
 
 def distinctive_tokens(query: str) -> list[str]:
@@ -486,27 +684,76 @@ def token_in_item(token: str, title: str, page: str, compact: str) -> bool:
 
 
 def tag_matched(item: dict, tag: str) -> bool:
-    title, page, compact = item_text(item)
+    title, _page, compact = item_text(item)
+    key = canon_query(tag)
+    aliases = tag_aliases(tag)
+    if any(neg in title for neg in NEGATE.get(key, ())):
+        if not any(alias_hits_title(title, compact, alias) for alias in aliases):
+            return False
+    if any(alias_hits_title(title, compact, alias) for alias in aliases):
+        return True
+    if key in PHRASE_ONLY:
+        return False
     tokens = distinctive_tokens(tag)
-    if tokens:
-        return any(token_in_item(token, title, page, compact) for token in tokens)
-    return relevance_score(item, ranking_terms(tag)) >= 6
+    strong = [tok for tok in tokens if tok not in WEAK_SOLO and len(tok) >= 4]
+    if not strong:
+        return False
+    if tokens and all(token_in_item(token, title, "", compact) for token in tokens):
+        return tokens_near(title, tokens)
+    return False
+
+
+def tag_strength(item: dict, tag: str) -> int:
+    title, _page, compact = item_text(item)
+    if not tag_matched(item, tag):
+        return 0
+    for alias in tag_aliases(tag):
+        phrase = re.sub(r"[^a-z0-9]+", " ", alias.lower()).strip()
+        if phrase and phrase in title:
+            return 3
+        glued = phrase.replace(" ", "")
+        if phrase and len(glued) >= 5 and glued in compact:
+            return 3
+    return 2
+
+
+def query_as_tags(query: str) -> list[str]:
+    key = canon_query(query)
+    if key in CATEGORY_ALIASES:
+        return [key]
+    blob = re.sub(r"[^a-z0-9]+", " ", (query or "").lower()).strip()
+    if not blob:
+        return []
+    found: list[str] = []
+    for name in sorted(CATEGORY_ALIASES, key=len, reverse=True):
+        for alias in tag_aliases(name):
+            phrase = re.sub(r"[^a-z0-9]+", " ", alias.lower()).strip()
+            if phrase and re.search(rf"\b{re.escape(phrase)}\b", blob):
+                if name not in found:
+                    found.append(name)
+                break
+        if len(found) >= 4:
+            break
+    return found
 
 
 def rank_items(items: list[dict], query: str, tags: list[str] | None = None) -> list[dict]:
     tag_list = [tag for tag in (tags or []) if tag]
+    if not tag_list:
+        tag_list = query_as_tags(query)
     if tag_list:
         terms = list(dict.fromkeys(term for tag in tag_list for term in ranking_terms(tag)))
         scored = []
         for item in items:
             hits = sum(1 for tag in tag_list if tag_matched(item, tag))
-            score = relevance_score(item, terms)
-            scored.append((hits, score, item))
-        scored.sort(key=lambda row: (row[0], row[1]), reverse=True)
+            strength = sum(tag_strength(item, tag) for tag in tag_list)
+            score = relevance_score(item, terms) + strength * 3
+            scored.append((hits, strength, score, item))
+        scored.sort(key=lambda row: (row[0], row[1], row[2]), reverse=True)
         total = len(tag_list)
-        full = [item for hits, _score, item in scored if hits >= total]
-        almost = [item for hits, _score, item in scored if hits >= max(1, total - 1)]
-        some = [item for hits, score, item in scored if hits > 0]
+        full = [item for hits, _st, _score, item in scored if hits >= total]
+        almost = [item for hits, _st, _score, item in scored if hits >= max(1, total - 1)]
+        some = [item for hits, _st, _score, item in scored if hits > 0]
         if full:
             return full
         if almost:
@@ -516,22 +763,22 @@ def rank_items(items: list[dict], query: str, tags: list[str] | None = None) -> 
     terms = ranking_terms(query)
     scored = []
     for item in items:
-        title, page, compact = item_text(item)
-        hit_count = sum(1 for token in tokens if token_in_item(token, title, page, compact)) if tokens else 0
-        score = relevance_score(item, terms)
-        scored.append((hit_count, score, item))
+        title, _page, compact = item_text(item)
+        title_hits = sum(1 for token in tokens if token_in_item(token, title, "", compact)) if tokens else 0
+        score = relevance_score(item, terms) + title_hits * 4
+        scored.append((title_hits, score, item))
     scored.sort(key=lambda row: (row[0], row[1]), reverse=True)
     if not tokens:
-        return [item for _hits, _score, item in scored]
+        return [item for _t, _s, item in scored]
     needed = len(tokens) if len(tokens) <= 3 else max(2, (len(tokens) * 2 + 2) // 3)
-    strong = [item for hits, _score, item in scored if hits >= needed]
+    strong = [item for title_hits, _score, item in scored if title_hits >= needed]
     if strong:
         return strong
     if needed > 1:
-        close = [item for hits, _score, item in scored if hits >= needed - 1]
-        if close:
-            return close
-    return [item for hits, _score, item in scored if hits > 0]
+        softer = [item for title_hits, _score, item in scored if title_hits >= needed - 1]
+        if softer:
+            return softer
+    return [item for title_hits, _score, item in scored if title_hits > 0]
 
 
 def interleave_by_source(items: list[dict]) -> list[dict]:
@@ -1382,7 +1629,7 @@ def run_search(query: str, source: str, page: int, tags: list[str] | None = None
     if is_daily(query):
         send = query
     elif tag_list:
-        send = combine_search_query(tag_list)
+        send = focused_search_query(tag_list)
     else:
         send = expand_search_query(query)
     if not (send or "").strip():
