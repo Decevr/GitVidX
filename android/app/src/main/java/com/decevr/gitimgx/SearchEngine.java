@@ -156,11 +156,21 @@ final class SearchEngine {
             List<java.util.concurrent.Future<NamedResult>> futures = new ArrayList<>();
             for (NamedSearch job : jobs) {
                 futures.add(pool.submit(() -> {
-                    List<JSONObject> found = new ArrayList<>();
-                    for (JSONObject row : job.fn.run(sendQuery, p)) {
-                        if (allowedItem(row)) found.add(row);
+                    try {
+                        List<JSONObject> found = new ArrayList<>();
+                        for (JSONObject row : job.fn.run(sendQuery, p)) {
+                            if (allowedItem(row)) found.add(row);
+                        }
+                        return new NamedResult(job.name, found, null);
+                    } catch (Exception error) {
+                        String msg = error.getMessage();
+                        if (msg == null || msg.isEmpty()) msg = "no results";
+                        if (msg.startsWith("java.lang.")) {
+                            int cut = msg.lastIndexOf(": ");
+                            if (cut >= 0) msg = msg.substring(cut + 2);
+                        }
+                        return new NamedResult(job.name, new ArrayList<>(), msg);
                     }
-                    return new NamedResult(job.name, found, null);
                 }));
             }
             for (int i = 0; i < futures.size(); i++) {
@@ -169,9 +179,13 @@ final class SearchEngine {
                     if (!result.items.isEmpty()) {
                         items.addAll(result.items);
                         sources.put(result.name);
+                    } else if (result.error != null && !result.error.isEmpty()) {
+                        errors.add(result.name + ": " + result.error);
                     }
                 } catch (Exception error) {
-                    errors.add(jobs.get(i).name + ": " + error.getMessage());
+                    Throwable cause = error.getCause() == null ? error : error.getCause();
+                    String msg = cause.getMessage();
+                    errors.add(jobs.get(i).name + ": " + (msg == null ? "no results" : msg));
                 }
             }
         } finally {
@@ -685,7 +699,7 @@ final class SearchEngine {
         List<String> ranked = new ArrayList<>(tags);
         ranked.sort((a, b) -> Integer.compare(focusScore(b), focusScore(a)));
         LinkedHashSet<String> phrases = new LinkedHashSet<>();
-        for (int i = 0; i < ranked.size() && phrases.size() < 3; i++) {
+        for (int i = 0; i < ranked.size() && phrases.size() < 2; i++) {
             String phrase = expandSearchQuery(ranked.get(i));
             if (phrase != null && !phrase.trim().isEmpty()) phrases.add(phrase);
         }
@@ -1075,7 +1089,7 @@ final class SearchEngine {
                 ? "https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=newest&page=" + (page + 1)
                 : "https://www.pornhub.com/webmasters/search?search=" + enc(query)
                 + "&thumbsize=large&page=" + (page + 1);
-        JSONObject data = new JSONObject(fetchText(url));
+        JSONObject data = parseObject(fetchText(url));
         JSONArray rows = data.optJSONArray("videos");
         List<JSONObject> items = new ArrayList<>();
         if (rows == null) {
@@ -1128,7 +1142,7 @@ final class SearchEngine {
                 ? "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=newest&thumbsize=medium&page=" + (page + 1)
                 : "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search="
                 + enc(query) + "&thumbsize=medium&page=" + (page + 1);
-        JSONObject data = new JSONObject(fetchText(url));
+        JSONObject data = parseObject(fetchText(url));
         JSONArray rows = data.optJSONArray("videos");
         List<JSONObject> items = new ArrayList<>();
         if (rows == null) {
@@ -1154,7 +1168,7 @@ final class SearchEngine {
                 + "&thumbsize=medium&order=" + order + "&gay=0&lq=1&format=json"
                 : "https://www.eporner.com/api/v2/video/search/?query=" + enc(query)
                 + "&per_page=20&page=" + (page + 1) + "&thumbsize=medium&order=latest&gay=0&lq=1&format=json";
-        JSONObject data = new JSONObject(fetchText(url));
+        JSONObject data = parseObject(fetchText(url));
         JSONArray rows = data.optJSONArray("videos");
         List<JSONObject> items = new ArrayList<>();
         if (rows == null) {
@@ -1806,10 +1820,10 @@ final class SearchEngine {
             int code = connection.getResponseCode();
             InputStream stream = code >= 400 ? connection.getErrorStream() : connection.getInputStream();
             String body = new String(readLimited(stream, 4_000_000), StandardCharsets.UTF_8);
-            if (code >= 400) {
-                throw new IllegalStateException("HTTP " + code);
-            }
+            if (code >= 400) return "";
             return body;
+        } catch (Exception ignored) {
+            return "";
         } finally {
             connection.disconnect();
         }
@@ -1861,8 +1875,21 @@ final class SearchEngine {
         return buffer.toByteArray();
     }
 
+    private JSONObject parseObject(String text) {
+        if (text == null) return new JSONObject();
+        String trim = text.trim();
+        if (trim.isEmpty() || (trim.charAt(0) != '{' && trim.charAt(0) != '[')) {
+            return new JSONObject();
+        }
+        try {
+            return new JSONObject(trim);
+        } catch (Exception ignored) {
+            return new JSONObject();
+        }
+    }
+
     private String enc(String value) throws Exception {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8.name());
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8.name()).replace("+", "%20");
     }
 
     private String sha1(String value) throws Exception {
@@ -1881,10 +1908,12 @@ final class SearchEngine {
     private static final class NamedResult {
         final String name;
         final List<JSONObject> items;
+        final String error;
 
-        NamedResult(String name, List<JSONObject> items, String ignored) {
+        NamedResult(String name, List<JSONObject> items, String error) {
             this.name = name;
             this.items = items;
+            this.error = error;
         }
     }
 

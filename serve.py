@@ -639,7 +639,7 @@ def focused_search_query(tags: list[str]) -> str:
     ranked = sorted(tags, key=spec, reverse=True)
     phrases: list[str] = []
     seen: set[str] = set()
-    for tag in ranked[:3]:
+    for tag in ranked[:2]:
         phrase = expand_search_query(tag)
         key = phrase.lower()
         if phrase and key not in seen:

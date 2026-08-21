@@ -650,7 +650,7 @@ final class SearchEngine {
         let ranked = tags.sorted { focusScore($0) > focusScore($1) }
         var phrasesOut: [String] = []
         var seen = Set<String>()
-        for tag in ranked.prefix(3) {
+        for tag in ranked.prefix(2) {
             let phrase = expand(tag)
             let key = phrase.lowercased()
             if !phrase.isEmpty && !seen.contains(key) {

@@ -255,7 +255,7 @@
     const ranked = [...tags].sort((a, b) => spec(b) - spec(a));
     const phrases = [];
     const seen = new Set();
-    for (const tag of ranked.slice(0, 3)) {
+    for (const tag of ranked.slice(0, 2)) {
       const phrase = expand(tag);
       const key = phrase.toLowerCase();
       if (phrase && !seen.has(key)) {

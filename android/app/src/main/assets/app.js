@@ -73,6 +73,15 @@ function feedKind(query) {
   return "";
 }
 
+function friendlyError(err) {
+  const text = String(err || "");
+  if (!text || text === "null") return "";
+  if (/illegalstateexception|http \d{3}/i.test(text)) {
+    return "Some sites didn't return that filter mix. Try fewer chips, or Apply again.";
+  }
+  return text;
+}
+
 function isDailyQuery(query) {
   return feedKind(query) === "new";
 }
@@ -495,7 +504,7 @@ async function search(reset, forceRefresh) {
         : data.error || "No videos captured yet.")
       : next.length || state.items.length
         ? `${state.items.length} videos`
-        : data.error || "No public videos found for that search.";
+        : friendlyError(data.error) || "No public videos found for that search.";
     setStatus(forceRefresh && state.items.length ? `Updated · ${countLabel}` : countLabel);
     render(reset);
   } catch (error) {
