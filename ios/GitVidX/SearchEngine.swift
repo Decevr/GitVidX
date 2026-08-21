@@ -11,6 +11,8 @@ final class SearchEngine {
     private let desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     private let mobileUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
     private let dailyQ = "__daily__"
+    private let newQ = "__new__"
+    private let viewsQ = "__views__"
     private let blockReason = "That search is blocked. GitVidX only shows legal, consensual, 18+ videos. No leaks, hidden cameras, or non-consensual content."
     private let stop: Set<String> = [
         "a", "an", "the", "and", "or", "of", "to", "in", "for", "on", "with", "plus",
@@ -102,14 +104,15 @@ final class SearchEngine {
     }
 
     private func runSearch(_ query: String, source: String, page: Int, refresh: Bool, tags: [String]) -> [String: Any] {
-        let daily = isDaily(query)
-        if daily, !refresh, let cached = loadDaily(source: source, page: page) {
+        let kind = feedKind(query)
+        let feed = !kind.isEmpty
+        if feed, !refresh, let cached = loadDaily(source: source, page: page, kind: kind) {
             return cached
         }
         let length = tags.first(where: { $0 == "short" || $0 == "long" }) ?? ""
         let content = tags.filter { $0 != "short" && $0 != "long" }
         let send: String
-        if daily {
+        if feed {
             send = query
         } else if !content.isEmpty {
             send = focused(content)
@@ -120,7 +123,7 @@ final class SearchEngine {
         }
         let sendQuery = (send.trimmingCharacters(in: .whitespaces).isEmpty || send == "short" || send == "long") ? "amateur" : send
         let jobs: [String] = {
-            let all = ["pornhub", "xvideos", "xhamster", "xnxx", "redtube", "eporner", "xxxbunker", "tnaflix", "drtuber", "pornone", "okxxx", "porn00", "xxxfiles", "xmoviesforyou", "whoreshub", "yespornvip", "justporn"]
+            let all = ["pornhub", "xvideos", "xhamster", "xnxx", "redtube", "eporner", "xxxbunker", "tnaflix", "drtuber", "pornone", "okxxx", "porn00", "xxxfiles", "xmoviesforyou", "whoreshub", "yespornvip", "justporn", "spankbang", "txxx", "3movs", "hdzog", "hotmovs", "porngo", "youjizz", "xozilla"]
             if source == "all" || source.isEmpty || !all.contains(source) { return all }
             return [source]
         }()
@@ -158,7 +161,7 @@ final class SearchEngine {
             unique.append(row)
         }
         let fetched = !unique.isEmpty
-        if daily {
+        if feed {
             unique = interleave(unique)
         } else {
             unique = rank(unique, query: query, tags: content)
@@ -169,24 +172,27 @@ final class SearchEngine {
         var payload: [String: Any] = [
             "query": query,
             "items": unique,
-            "next": fetched && !daily,
+            "next": fetched,
             "sources": used,
-            "mode": daily ? "daily" : "search",
+            "mode": kind.isEmpty ? "search" : kind,
             "error": unique.isEmpty && !errors.isEmpty ? errors.joined(separator: "; ") : NSNull()
         ]
-        payload["date"] = daily ? today() : NSNull()
-        if daily, !unique.isEmpty {
-            saveDaily(source: source, page: page, payload: payload)
+        payload["date"] = feed ? today() : NSNull()
+        if feed, !unique.isEmpty {
+            saveDaily(source: source, page: page, payload: payload, kind: kind)
         }
         return payload
     }
 
     private func site(_ name: String, query: String, page: Int) throws -> [[String: String]] {
-        let daily = isDaily(query)
+        let kind = feedKind(query)
+        let daily = !kind.isEmpty
         switch name {
         case "pornhub":
-            let url = daily
-                ? "https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=featured&page=\(page + 1)"
+            let url = kind == "views"
+                ? "https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=mostviewed&page=\(page + 1)"
+                : kind == "new"
+                ? "https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=newest&page=\(page + 1)"
                 : "https://www.pornhub.com/webmasters/search?search=\(enc(query))&thumbsize=large&page=\(page + 1)"
             return jsonVideos(url, provider: "Pornhub", source: "pornhub", list: "videos") { row in
                 let pageUrl = row["url"] as? String ?? ""
@@ -198,8 +204,10 @@ final class SearchEngine {
                 return self.item("Pornhub", "pornhub", self.text(row["title"]), pageUrl, self.text(row["default_thumb"]) ?? self.text(row["thumb"]), embed, self.text(row["duration"]))
             }
         case "redtube":
-            let url = daily
-                ? "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=featured&thumbsize=medium&page=\(page + 1)"
+            let url = kind == "views"
+                ? "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=mostviewed&thumbsize=medium&page=\(page + 1)"
+                : kind == "new"
+                ? "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=newest&thumbsize=medium&page=\(page + 1)"
                 : "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search=\(enc(query))&thumbsize=medium&page=\(page + 1)"
             return jsonVideos(url, provider: "RedTube", source: "redtube", list: "videos") { wrap in
                 let row = (wrap["video"] as? [String: Any]) ?? wrap
@@ -324,9 +332,72 @@ final class SearchEngine {
             let url = daily ? (page == 0 ? "https://www.justporn.to/" : "https://www.justporn.to/page/\(page + 1)/")
                 : "https://www.justporn.to/search/\(enc(query))/\(page > 0 ? "page/\(page + 1)/" : "")"
             return htmlVideos(url, "JustPorn", "justporn", #"href="(https://(?:www\.)?justporn.to/[a-z0-9-]+/)"[\s\S]{0,700}?src="(https://justporn.to/cover_upload/[^"]+)""#, "", daily ? desktopUA : mobileUA)
+        case "spankbang":
+            let url = daily ? (page == 0 ? "https://spankbang.com/" : "https://spankbang.com/\(page + 1)/")
+                : "https://spankbang.com/s/\(enc(query))/\(page > 0 ? "\(page + 1)/" : "")"
+            return htmlVideos(url, "SpankBang", "spankbang", #"href="(/[a-z0-9]+/video/[^"]+)"[\s\S]{0,900}?(?:data-src|src)="((?:https:)?//[^"]+\.(?:jpg|jpeg|webp)[^"]*)""#, "https://spankbang.com", daily ? desktopUA : mobileUA)
+        case "txxx":
+            return kvs("TXXX", "txxx", "txxx.com", query, page, daily)
+        case "3movs":
+            return kvs("3Movs", "3movs", "www.3movs.com", query, page, daily)
+        case "hdzog":
+            return kvs("HDZog", "hdzog", "hdzog.com", query, page, daily)
+        case "hotmovs":
+            return kvs("HotMovs", "hotmovs", "hotmovs.com", query, page, daily)
+        case "porngo":
+            return kvs("PornGo", "porngo", "www.porngo.com", query, page, daily)
+        case "youjizz":
+            let slug = enc(query).replacingOccurrences(of: "%20", with: "-")
+            let url = daily
+                ? "https://www.youjizz.com/newest-clips/\(page + 1).html"
+                : "https://www.youjizz.com/search/\(slug)-\(page + 1).html"
+            return htmlVideos(url, "YouJizz", "youjizz", #"href="(/videos/[^"]+\.html)"[\s\S]{0,800}?(?:data-original|src)="((?:https:)?//[^"]+\.(?:jpg|jpeg|webp)[^"]*)""#, "https://www.youjizz.com", daily ? desktopUA : mobileUA)
+        case "xozilla":
+            return kvs("Xozilla", "xozilla", "www.xozilla.com", query, page, daily)
         default:
             return []
         }
+    }
+
+    private func kvs(_ provider: String, _ source: String, _ host: String, _ query: String, _ page: Int, _ daily: Bool) -> [[String: String]] {
+        let extra = page > 0 ? "?from_videos=\(page + 1)" : ""
+        let url: String
+        let kind = feedKind(query)
+        if kind == "new" {
+            url = page == 0 ? "https://\(host)/latest-updates/" : "https://\(host)/latest-updates/\(page + 1)/"
+        } else if kind == "views" {
+            url = page == 0 ? "https://\(host)/most-popular/" : "https://\(host)/most-popular/\(page + 1)/"
+        } else {
+            url = "https://\(host)/search/\(enc(query))/\(extra)"
+        }
+        let body = fetch(url, ua: !kind.isEmpty ? desktopUA : mobileUA)
+        var items: [[String: String]] = []
+        var seen = Set<String>()
+        let pattern = "href=\"((?:https://(?:www\\.)?\(NSRegularExpression.escapedPattern(for: host)))?/(?:videos|video|movies)/(\\d+)/[^\"]+)\""
+        for m in matches(pattern, body) where items.count < 40 {
+            var pageUrl = m[1]
+            if !pageUrl.hasPrefix("http") { pageUrl = "https://\(host)\(pageUrl)" }
+            pageUrl = pageUrl.split(separator: "?").first.map(String.init) ?? pageUrl
+            if seen.contains(pageUrl) { continue }
+            seen.insert(pageUrl)
+            let at = body.range(of: m[0])?.lowerBound
+            var thumb = ""
+            if let at {
+                let start = body.index(at, offsetBy: -120, limitedBy: body.startIndex) ?? body.startIndex
+                let end = body.index(at, offsetBy: 900, limitedBy: body.endIndex) ?? body.endIndex
+                let chunk = String(body[start..<end])
+                if let tm = matches(#"(?:data-original|data-src|src)="((?:https:)?//[^"]+\.(?:jpg|jpeg|webp)[^"]*)""#, chunk).first {
+                    thumb = cleanThumb(tm[safe: 1] ?? "")
+                }
+            }
+            if thumb.isEmpty, let num = Int(m[2]) {
+                let bucket = (num / 1000) * 1000
+                thumb = "https://\(host)/contents/videos_screenshots/\(bucket)/\(num)/320x180/1.jpg"
+            }
+            let title = pageUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")).split(separator: "/").last.map(String.init)?.replacingOccurrences(of: "-", with: " ") ?? ""
+            items.append(item(provider, source, title, pageUrl, thumb, "", ""))
+        }
+        return fillDurations(items, body)
     }
 
     private func htmlVideos(_ url: String, _ provider: String, _ source: String, _ pattern: String, _ prefix: String, _ ua: String, cap: Int = 40) -> [[String: String]] {
@@ -387,6 +458,7 @@ final class SearchEngine {
             }
             let total = tagList.count
             let full = scored.filter { $0.0 >= total }.map { $0.3 }
+            if total >= 2 { return full }
             let almost = scored.filter { $0.0 >= max(1, total - 1) }.map { $0.3 }
             let some = scored.filter { $0.0 > 0 }.map { $0.3 }
             if !full.isEmpty { return full }
@@ -578,7 +650,7 @@ final class SearchEngine {
         let ranked = tags.sorted { focusScore($0) > focusScore($1) }
         var phrasesOut: [String] = []
         var seen = Set<String>()
-        for tag in ranked.prefix(2) {
+        for tag in ranked.prefix(3) {
             let phrase = expand(tag)
             let key = phrase.lowercased()
             if !phrase.isEmpty && !seen.contains(key) {
@@ -659,7 +731,7 @@ final class SearchEngine {
     }
 
     private func expand(_ query: String) -> String {
-        if isDaily(query) { return query }
+        if isFeed(query) { return query }
         let key = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             .replacingOccurrences(of: #"[\s_]+"#, with: " ", options: .regularExpression)
         return phrases[key] ?? query.trimmingCharacters(in: .whitespaces)
@@ -825,8 +897,8 @@ final class SearchEngine {
         }
     }
 
-    private func loadDaily(source: String, page: Int) -> [String: Any]? {
-        let file = dailyFile(source: source, page: page)
+    private func loadDaily(source: String, page: Int, kind: String) -> [String: Any]? {
+        let file = dailyFile(source: source, page: page, kind: kind)
         guard let data = try? Data(contentsOf: file),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               obj["date"] as? String == today(),
@@ -834,15 +906,16 @@ final class SearchEngine {
         return obj
     }
 
-    private func saveDaily(source: String, page: Int, payload: [String: Any]) {
+    private func saveDaily(source: String, page: Int, payload: [String: Any], kind: String) {
         guard JSONSerialization.isValidJSONObject(payload),
               let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
-        try? data.write(to: dailyFile(source: source, page: page), options: .atomic)
+        try? data.write(to: dailyFile(source: source, page: page, kind: kind), options: .atomic)
     }
 
-    private func dailyFile(source: String, page: Int) -> URL {
+    private func dailyFile(source: String, page: Int, kind: String) -> URL {
         let safe = source.lowercased().replacingOccurrences(of: "[^a-z0-9]+", with: "-", options: .regularExpression)
-        return FileManager.default.temporaryDirectory.appendingPathComponent("gitvidx-daily-\(today())-\(safe)-\(page).json")
+        let label = kind.isEmpty ? "new" : kind
+        return FileManager.default.temporaryDirectory.appendingPathComponent("gitvidx-feed-\(label)-\(today())-\(safe)-\(page).json")
     }
 
     private func json(_ payload: [String: Any], statusHint: Int = 200) -> Data {
@@ -853,8 +926,19 @@ final class SearchEngine {
         URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == name })?.value
     }
 
+    private func feedKind(_ query: String) -> String {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if q == newQ || q == dailyQ { return "new" }
+        if q == viewsQ { return "views" }
+        return ""
+    }
+
     private func isDaily(_ query: String) -> Bool {
-        query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == dailyQ
+        feedKind(query) == "new"
+    }
+
+    private func isFeed(_ query: String) -> Bool {
+        !feedKind(query).isEmpty
     }
 
     private func today() -> String {

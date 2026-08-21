@@ -50,24 +50,40 @@ BLOCK_REASON = (
 CACHE: dict[str, tuple[float, dict]] = {}
 CACHE_TTL = 180
 DAILY_Q = "__daily__"
+NEW_Q = "__new__"
+VIEWS_Q = "__views__"
 DAILY_DIR = ROOT / ".cache"
 
 
+def feed_kind(query: str) -> str:
+    q = (query or "").strip().lower()
+    if q in (NEW_Q, DAILY_Q):
+        return "new"
+    if q == VIEWS_Q:
+        return "views"
+    return ""
+
+
 def is_daily(query: str) -> bool:
-    return (query or "").strip().lower() == DAILY_Q
+    return feed_kind(query) == "new"
+
+
+def is_feed(query: str) -> bool:
+    return bool(feed_kind(query))
 
 
 def today_stamp() -> str:
     return date.today().isoformat()
 
 
-def daily_cache_path(source: str, page: int) -> Path:
+def daily_cache_path(source: str, page: int, kind: str = "new") -> Path:
     safe = re.sub(r"[^a-z0-9]+", "-", (source or "all").lower()).strip("-") or "all"
-    return DAILY_DIR / f"daily-{today_stamp()}-{safe}-{page}.json"
+    label = kind if kind in ("new", "views") else "new"
+    return DAILY_DIR / f"feed-{label}-{today_stamp()}-{safe}-{page}.json"
 
 
-def load_daily_cache(source: str, page: int) -> dict | None:
-    path = daily_cache_path(source, page)
+def load_daily_cache(source: str, page: int, kind: str = "new") -> dict | None:
+    path = daily_cache_path(source, page, kind)
     if not path.is_file():
         return None
     try:
@@ -79,16 +95,21 @@ def load_daily_cache(source: str, page: int) -> dict | None:
     return None
 
 
-def save_daily_cache(source: str, page: int, payload: dict) -> None:
+def save_daily_cache(source: str, page: int, payload: dict, kind: str = "new") -> None:
     DAILY_DIR.mkdir(parents=True, exist_ok=True)
     stamp = today_stamp()
-    for old in DAILY_DIR.glob("daily-*.json"):
+    for old in DAILY_DIR.glob("feed-*.json"):
         if stamp not in old.name:
             try:
                 old.unlink()
             except OSError:
                 pass
-    daily_cache_path(source, page).write_text(json.dumps(payload), encoding="utf-8")
+    for old in DAILY_DIR.glob("daily-*.json"):
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    daily_cache_path(source, page, kind).write_text(json.dumps(payload), encoding="utf-8")
 
 
 STOP_WORDS = {
@@ -472,7 +493,7 @@ def canon_query(query: str) -> str:
 
 
 def expand_search_query(query: str) -> str:
-    if is_daily(query):
+    if is_feed(query):
         return query
     key = canon_query(query)
     return SEARCH_PHRASE.get(key) or (query or "").strip()
@@ -618,7 +639,7 @@ def focused_search_query(tags: list[str]) -> str:
     ranked = sorted(tags, key=spec, reverse=True)
     phrases: list[str] = []
     seen: set[str] = set()
-    for tag in ranked[:2]:
+    for tag in ranked[:3]:
         phrase = expand_search_query(tag)
         key = phrase.lower()
         if phrase and key not in seen:
@@ -814,6 +835,8 @@ def rank_items(items: list[dict], query: str, tags: list[str] | None = None) -> 
         scored.sort(key=lambda row: (row[0], row[1], row[2]), reverse=True)
         total = len(tag_list)
         full = [item for hits, _st, _score, item in scored if hits >= total]
+        if total >= 2:
+            return full
         almost = [item for hits, _st, _score, item in scored if hits >= max(1, total - 1)]
         some = [item for hits, _st, _score, item in scored if hits > 0]
         if full:
@@ -981,8 +1004,11 @@ def allowed_item(row: dict) -> bool:
 
 
 def pornhub_search(query: str, page: int) -> list[dict]:
-    if is_daily(query):
-        params = urlencode({"thumbsize": "large", "ordering": "featured", "page": page + 1})
+    kind = feed_kind(query)
+    if kind == "new":
+        params = urlencode({"thumbsize": "large", "ordering": "newest", "page": page + 1})
+    elif kind == "views":
+        params = urlencode({"thumbsize": "large", "ordering": "mostviewed", "page": page + 1})
     else:
         params = urlencode({"search": query, "thumbsize": "large", "page": page + 1})
     data = json.loads(fetch(f"https://www.pornhub.com/webmasters/search?{params}", {"Accept": "application/json"}))
@@ -1038,8 +1064,11 @@ def redtube_search(query: str, page: int) -> list[dict]:
         "thumbsize": "medium",
         "page": page + 1,
     }
-    if is_daily(query):
-        params["ordering"] = "featured"
+    kind = feed_kind(query)
+    if kind == "new":
+        params["ordering"] = "newest"
+    elif kind == "views":
+        params["ordering"] = "mostviewed"
     else:
         params["search"] = query
     params = urlencode(params)
@@ -1066,11 +1095,11 @@ def redtube_search(query: str, page: int) -> list[dict]:
 def eporner_search(query: str, page: int) -> list[dict]:
     params = urlencode(
         {
-            "query": "" if is_daily(query) else query,
+            "query": "" if feed_kind(query) else query,
             "per_page": 20,
             "page": page + 1,
             "thumbsize": "medium",
-            "order": "top-weekly" if is_daily(query) else "latest",
+            "order": "most-popular" if feed_kind(query) == "views" else "latest",
             "gay": 0,
             "lq": 1,
             "format": "json",
@@ -1116,8 +1145,11 @@ def clean_thumb(url: str) -> str:
 
 
 def xvideos_search(query: str, page: int) -> list[dict]:
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind == "new":
         target = "https://www.xvideos.com/" if page == 0 else f"https://www.xvideos.com/new/{page + 1}"
+    elif kind == "views":
+        target = "https://www.xvideos.com/best/" if page == 0 else f"https://www.xvideos.com/best/{page + 1}"
     else:
         target = f"https://www.xvideos.com/?k={quote(query)}&p={page}"
     body = fetch(target, {"Accept": "text/html", "Referer": "https://www.xvideos.com/"}).decode("utf-8", "ignore")
@@ -1147,8 +1179,11 @@ def xvideos_search(query: str, page: int) -> list[dict]:
 
 
 def xnxx_search(query: str, page: int) -> list[dict]:
-    if is_daily(query):
-        target = "https://www.xnxx.com/todays-selection" if page == 0 else f"https://www.xnxx.com/todays-selection/{page}"
+    kind = feed_kind(query)
+    if kind == "new":
+        target = "https://www.xnxx.com/" if page == 0 else f"https://www.xnxx.com/new/{page + 1}"
+    elif kind == "views":
+        target = "https://www.xnxx.com/best/" if page == 0 else f"https://www.xnxx.com/best/{page + 1}"
     else:
         path_page = "" if page == 0 else f"/{page}"
         target = f"https://www.xnxx.com/search/{quote(query)}{path_page}"
@@ -1175,9 +1210,13 @@ def xnxx_search(query: str, page: int) -> list[dict]:
 
 
 def xhamster_search(query: str, page: int) -> list[dict]:
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind == "new":
         suffix = "" if page == 0 else f"/{page + 1}"
-        target = f"https://xhamster.com/best/daily{suffix}"
+        target = f"https://xhamster.com/newest{suffix}"
+    elif kind == "views":
+        suffix = "" if page == 0 else f"/{page + 1}"
+        target = f"https://xhamster.com/best{suffix}"
     else:
         suffix = "" if page == 0 else f"?page={page + 1}"
         target = f"https://xhamster.com/search/{quote(query)}{suffix}"
@@ -1233,9 +1272,12 @@ def hqporner_search(query: str, page: int) -> list[dict]:
 
 
 def xxxbunker_search(query: str, page: int) -> list[dict]:
-    if is_daily(query):
-        extra = f"/{page + 1}" if page else ""
+    kind = feed_kind(query)
+    extra = f"/{page + 1}" if page else ""
+    if kind == "new":
         target = f"https://xxxbunker.com/{extra.lstrip('/')}" if extra else "https://xxxbunker.com/"
+    elif kind == "views":
+        target = f"https://xxxbunker.com/top{extra}"
     else:
         q = quote(query).replace("%20", "+")
         extra = f"/{page + 1}" if page else ""
@@ -1272,9 +1314,13 @@ def xxxbunker_search(query: str, page: int) -> list[dict]:
 
 
 def tnaflix_search(query: str, page: int) -> list[dict]:
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind == "new":
         extra = f"?page={page + 1}" if page else ""
         target = f"https://www.tnaflix.com/{extra}"
+    elif kind == "views":
+        extra = f"?page={page + 1}" if page else ""
+        target = f"https://www.tnaflix.com/popular{extra}"
     else:
         extra = f"&page={page + 1}" if page else ""
         target = f"https://www.tnaflix.com/search.php?what={quote(query)}{extra}"
@@ -1300,8 +1346,11 @@ def tnaflix_search(query: str, page: int) -> list[dict]:
 
 def drtuber_search(query: str, page: int) -> list[dict]:
     extra = f"/{page + 1}" if page else ""
-    if is_daily(query):
-        target = "https://www.drtuber.com/" if page == 0 else f"https://www.drtuber.com/latest-updates/{page + 1}"
+    kind = feed_kind(query)
+    if kind == "new":
+        target = "https://www.drtuber.com/latest-updates/" if page == 0 else f"https://www.drtuber.com/latest-updates/{page + 1}"
+    elif kind == "views":
+        target = "https://www.drtuber.com/most-popular/" if page == 0 else f"https://www.drtuber.com/most-popular/{page + 1}"
     else:
         target = f"https://www.drtuber.com/search/videos/{quote(query)}{extra}"
     body = fetch(target, {"Accept": "text/html", "Referer": "https://www.drtuber.com/"}).decode("utf-8", "ignore")
@@ -1359,8 +1408,11 @@ def sunporno_search(query: str, page: int) -> list[dict]:
 
 def pornone_search(query: str, page: int) -> list[dict]:
     extra = f"/{page + 1}" if page else ""
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind == "new":
         target = "https://www.pornone.com/" if page == 0 else f"https://www.pornone.com/{page + 1}/"
+    elif kind == "views":
+        target = "https://www.pornone.com/most-viewed/" if page == 0 else f"https://www.pornone.com/most-viewed/{page + 1}/"
     else:
         target = f"https://www.pornone.com/search{extra}/?q={quote(query)}"
     body = fetch(target, {"Accept": "text/html", "Referer": "https://www.pornone.com/"}).decode("utf-8", "ignore")
@@ -1405,8 +1457,11 @@ def tube8_search(query: str, page: int) -> list[dict]:
 
 def okxxx_search(query: str, page: int) -> list[dict]:
     extra = f"?from_videos={page + 1}" if page else ""
-    if is_daily(query):
-        target = "https://ok.xxx/" if page == 0 else f"https://ok.xxx/latest-updates/{page + 1}/"
+    kind = feed_kind(query)
+    if kind == "new":
+        target = "https://ok.xxx/latest-updates/" if page == 0 else f"https://ok.xxx/latest-updates/{page + 1}/"
+    elif kind == "views":
+        target = "https://ok.xxx/most-popular/" if page == 0 else f"https://ok.xxx/most-popular/{page + 1}/"
     else:
         target = f"https://ok.xxx/search/{quote(query)}/{extra}"
     body = fetch(target, {"Accept": "text/html", "Referer": "https://ok.xxx/"}).decode("utf-8", "ignore")
@@ -1429,8 +1484,11 @@ def okxxx_search(query: str, page: int) -> list[dict]:
 
 def porn00_search(query: str, page: int) -> list[dict]:
     extra = f"{page + 1}/" if page else ""
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind == "new":
         target = "https://www.porn00.org/latest/" if page == 0 else f"https://www.porn00.org/latest/{page + 1}/"
+    elif kind == "views":
+        target = "https://www.porn00.org/most-popular/" if page == 0 else f"https://www.porn00.org/most-popular/{page + 1}/"
     else:
         target = f"https://www.porn00.org/q/{quote(query)}/{extra}"
     body = fetch(target, {"Accept": "text/html", "Referer": "https://www.porn00.org/"}).decode("utf-8", "ignore")
@@ -1452,7 +1510,8 @@ def porn00_search(query: str, page: int) -> list[dict]:
 
 def xxxfiles_search(query: str, page: int) -> list[dict]:
     extra = f"&page={page + 1}" if page else ""
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind:
         target = "https://www.xxxfiles.com/" if page == 0 else f"https://www.xxxfiles.com/page/{page + 1}/"
     else:
         target = f"https://www.xxxfiles.com/?s={quote(query)}{extra}"
@@ -1479,7 +1538,8 @@ def xxxfiles_search(query: str, page: int) -> list[dict]:
 
 def xmoviesforyou_search(query: str, page: int) -> list[dict]:
     extra = f"&paged={page + 1}" if page else ""
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind:
         target = "https://xmoviesforyou.com/" if page == 0 else f"https://xmoviesforyou.com/page/{page + 1}/"
     else:
         target = f"https://xmoviesforyou.com/?s={quote(query)}{extra}"
@@ -1506,8 +1566,11 @@ def xmoviesforyou_search(query: str, page: int) -> list[dict]:
 
 def whoreshub_search(query: str, page: int) -> list[dict]:
     extra = f"?from_videos={page + 1}" if page else ""
-    if is_daily(query):
-        target = "https://www.whoreshub.com/" if page == 0 else f"https://www.whoreshub.com/latest-updates/{page + 1}/"
+    kind = feed_kind(query)
+    if kind == "new":
+        target = "https://www.whoreshub.com/latest-updates/" if page == 0 else f"https://www.whoreshub.com/latest-updates/{page + 1}/"
+    elif kind == "views":
+        target = "https://www.whoreshub.com/most-popular/" if page == 0 else f"https://www.whoreshub.com/most-popular/{page + 1}/"
     else:
         target = f"https://www.whoreshub.com/search/{quote(query)}/{extra}"
     body = fetch(target, {"Accept": "text/html", "Referer": "https://www.whoreshub.com/"}).decode("utf-8", "ignore")
@@ -1532,7 +1595,8 @@ def whoreshub_search(query: str, page: int) -> list[dict]:
 
 def yespornvip_search(query: str, page: int) -> list[dict]:
     extra = f"&paged={page + 1}" if page else ""
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind:
         target = "https://yespornvip.com/" if page == 0 else f"https://yespornvip.com/page/{page + 1}/"
     else:
         target = f"https://yespornvip.com/?s={quote(query)}{extra}"
@@ -1569,7 +1633,8 @@ def yespornvip_search(query: str, page: int) -> list[dict]:
 
 def justporn_search(query: str, page: int) -> list[dict]:
     extra = f"page/{page + 1}/" if page else ""
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind:
         target = "https://www.justporn.to/" if page == 0 else f"https://www.justporn.to/page/{page + 1}/"
     else:
         target = f"https://www.justporn.to/search/{quote(query)}/{extra}"
@@ -1654,6 +1719,135 @@ def homemadegalore_search(query: str, page: int) -> list[dict]:
     return attach_durations(items, body)
 
 
+def kvs_search(provider: str, source: str, host: str, query: str, page: int) -> list[dict]:
+    extra = f"?from_videos={page + 1}" if page else ""
+    kind = feed_kind(query)
+    if kind == "new":
+        target = f"https://{host}/latest-updates/" if page == 0 else f"https://{host}/latest-updates/{page + 1}/"
+    elif kind == "views":
+        target = f"https://{host}/most-popular/" if page == 0 else f"https://{host}/most-popular/{page + 1}/"
+    else:
+        target = f"https://{host}/search/{quote(query)}/{extra}"
+    body = fetch(target, {"Accept": "text/html", "Referer": f"https://{host}/"}).decode("utf-8", "ignore")
+    items = []
+    seen = set()
+    host_re = re.escape(host)
+    for match in re.finditer(
+        rf'href="((?:https://(?:www\.)?{host_re})?/(?:videos|video|movies)/(\d+)/[^"]+)"',
+        body,
+        re.I,
+    ):
+        path, vid = match.group(1), match.group(2)
+        page_url = path if path.startswith("http") else f"https://{host}{path}"
+        page_url = page_url.split("?")[0]
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        chunk = body[max(0, match.start() - 120) : match.end() + 900]
+        thumb_m = re.search(
+            r'(?:data-original|data-src|src)="((?:https:)?//[^"]+\.(?:jpg|jpeg|webp)[^"]*)"',
+            chunk,
+            re.I,
+        )
+        thumb = clean_thumb(thumb_m.group(1)) if thumb_m else ""
+        if not thumb:
+            num = int(vid)
+            bucket = (num // 1000) * 1000
+            thumb = f"https://{host}/contents/videos_screenshots/{bucket}/{num}/320x180/1.jpg"
+        title = page_url.rstrip("/").split("/")[-1].replace("-", " ")
+        items.append(video_item(provider, source, title, page_url, thumb, "", ""))
+        if len(items) >= 40:
+            break
+    return attach_durations(items, body)
+
+
+def txxx_search(query: str, page: int) -> list[dict]:
+    return kvs_search("TXXX", "txxx", "txxx.com", query, page)
+
+
+def threemovs_search(query: str, page: int) -> list[dict]:
+    return kvs_search("3Movs", "3movs", "www.3movs.com", query, page)
+
+
+def hdzog_search(query: str, page: int) -> list[dict]:
+    return kvs_search("HDZog", "hdzog", "hdzog.com", query, page)
+
+
+def hotmovs_search(query: str, page: int) -> list[dict]:
+    return kvs_search("HotMovs", "hotmovs", "hotmovs.com", query, page)
+
+
+def porngo_search(query: str, page: int) -> list[dict]:
+    return kvs_search("PornGo", "porngo", "www.porngo.com", query, page)
+
+
+def xozilla_search(query: str, page: int) -> list[dict]:
+    return kvs_search("Xozilla", "xozilla", "www.xozilla.com", query, page)
+
+
+def spankbang_search(query: str, page: int) -> list[dict]:
+    kind = feed_kind(query)
+    extra = f"{page + 1}/" if page else ""
+    if kind == "new":
+        target = f"https://spankbang.com/new_videos/{extra}"
+    elif kind == "views":
+        target = f"https://spankbang.com/trending_videos/{extra}"
+    else:
+        extra = f"{page + 1}/" if page else ""
+        target = f"https://spankbang.com/s/{quote(query)}/{extra}"
+    body = fetch(target, {"Accept": "text/html", "Referer": "https://spankbang.com/"}).decode("utf-8", "ignore")
+    items = []
+    seen = set()
+    for match in re.finditer(
+        r'href="(/[a-z0-9]+/video/[^"]+)"[\s\S]{0,900}?(?:data-src|src)="((?:https:)?//[^"]+\.(?:jpg|jpeg|webp)[^"]*)"',
+        body,
+        re.I,
+    ):
+        path, thumb = match.group(1), clean_thumb(match.group(2))
+        if "/playlist/" in path or not thumb:
+            continue
+        page_url = "https://spankbang.com" + path.split("?")[0]
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        title = path.rstrip("/").split("/")[-1].replace("-", " ")
+        items.append(video_item("SpankBang", "spankbang", title, page_url, thumb, "", ""))
+        if len(items) >= 40:
+            break
+    return attach_durations(items, body)
+
+
+def youjizz_search(query: str, page: int) -> list[dict]:
+    kind = feed_kind(query)
+    if kind == "new":
+        target = f"https://www.youjizz.com/newest-clips/{page + 1}.html"
+    elif kind == "views":
+        target = f"https://www.youjizz.com/most-popular/{page + 1}.html"
+    else:
+        slug = quote(query).replace("%20", "-")
+        target = f"https://www.youjizz.com/search/{slug}-{page + 1}.html"
+    body = fetch(target, {"Accept": "text/html", "Referer": "https://www.youjizz.com/"}).decode("utf-8", "ignore")
+    items = []
+    seen = set()
+    for match in re.finditer(
+        r'href="(/videos/[^"]+\.html)"[\s\S]{0,800}?(?:data-original|src)="((?:https:)?//[^"]+\.(?:jpg|jpeg|webp)[^"]*)"',
+        body,
+        re.I,
+    ):
+        path, thumb = match.group(1), clean_thumb(match.group(2))
+        if not thumb:
+            continue
+        page_url = "https://www.youjizz.com" + path
+        if page_url in seen:
+            continue
+        seen.add(page_url)
+        title = path.rsplit("/", 1)[-1].replace(".html", "").replace("-", " ")
+        items.append(video_item("YouJizz", "youjizz", title, page_url, thumb, "", ""))
+        if len(items) >= 40:
+            break
+    return attach_durations(items, body)
+
+
 SOURCES = {
     "pornhub": ("Pornhub", pornhub_search),
     "xvideos": ("XVideos", xvideos_search),
@@ -1672,6 +1866,14 @@ SOURCES = {
     "whoreshub": ("WhoresHub", whoreshub_search),
     "yespornvip": ("YesPornVIP", yespornvip_search),
     "justporn": ("JustPorn", justporn_search),
+    "spankbang": ("SpankBang", spankbang_search),
+    "txxx": ("TXXX", txxx_search),
+    "3movs": ("3Movs", threemovs_search),
+    "hdzog": ("HDZog", hdzog_search),
+    "hotmovs": ("HotMovs", hotmovs_search),
+    "porngo": ("PornGo", porngo_search),
+    "youjizz": ("YouJizz", youjizz_search),
+    "xozilla": ("Xozilla", xozilla_search),
 }
 
 
@@ -1689,7 +1891,8 @@ def run_search(query: str, source: str, page: int, tags: list[str] | None = None
     errors: list[str] = []
     tag_list = parse_tags(",".join(tags or []))
     content_tags, length = split_length_tags(tag_list)
-    if is_daily(query):
+    kind = feed_kind(query)
+    if kind:
         send = query
     elif content_tags:
         send = focused_search_query(content_tags)
@@ -1720,7 +1923,7 @@ def run_search(query: str, source: str, page: int, tags: list[str] | None = None
         seen.add(key)
         unique.append(row)
     fetched = bool(unique)
-    if is_daily(query):
+    if kind:
         unique = interleave_by_source(unique)
     else:
         unique = rank_items(unique, query, content_tags)
@@ -1729,10 +1932,10 @@ def run_search(query: str, source: str, page: int, tags: list[str] | None = None
     return {
         "query": query,
         "items": unique,
-        "next": fetched and not is_daily(query),
+        "next": fetched,
         "sources": used,
-        "date": today_stamp() if is_daily(query) else None,
-        "mode": "daily" if is_daily(query) else "search",
+        "date": today_stamp() if kind else None,
+        "mode": kind or "search",
         "error": "; ".join(errors) if errors and not unique else None,
     }
 
@@ -1792,15 +1995,16 @@ class Handler(SimpleHTTPRequestHandler):
         if reason:
             self.send_json(400, {"error": reason, "items": []})
             return
-        if is_daily(query):
+        kind = feed_kind(query)
+        if kind:
             if not refresh:
-                cached = load_daily_cache(source, page)
+                cached = load_daily_cache(source, page, kind)
                 if cached:
                     self.send_json(200, cached)
                     return
             try:
                 payload = run_search(query, source, page, tags)
-                save_daily_cache(source, page, payload)
+                save_daily_cache(source, page, payload, kind)
                 self.send_json(200, payload)
             except Exception as error:
                 try:

@@ -1,6 +1,8 @@
 /* Client search for GitHub Pages / home-screen PWA (no Python server). */
 (function () {
   const DAILY_Q = "__daily__";
+  const NEW_Q = "__new__";
+  const VIEWS_Q = "__views__";
   const STOP = new Set(["a","an","the","and","or","of","to","in","for","on","with","plus","hair","sex","fuck","video","style","position","man","guy","view","camera","cam","shot","angle"]);
   const PHRASES = {
     amateur: "amateur", milf: "milf", lesbian: "lesbian", blonde: "blonde", brunette: "brunette",
@@ -147,7 +149,13 @@
   const LENGTH = new Set(["short", "long"]);
   const SHORT_MAX = 10 * 60;
   const LONG_MIN = 20 * 60;
-  function isDaily(q) { return String(q || "").trim().toLowerCase() === DAILY_Q; }
+  function feedKind(q) {
+    const value = String(q || "").trim().toLowerCase();
+    if (value === NEW_Q || value === DAILY_Q) return "new";
+    if (value === VIEWS_Q) return "views";
+    return "";
+  }
+  function isDaily(q) { return feedKind(q) === "new"; }
   function splitLength(tags) {
     const length = tags.find((tag) => LENGTH.has(tag)) || "";
     return { content: tags.filter((tag) => !LENGTH.has(tag)), length };
@@ -176,7 +184,7 @@
     return true;
   }
   function expand(q) {
-    if (isDaily(q)) return q;
+    if (feedKind(q)) return q;
     const key = String(q || "").trim().toLowerCase().replace(/[\s_]+/g, " ");
     return PHRASES[key] || String(q || "").trim();
   }
@@ -247,7 +255,7 @@
     const ranked = [...tags].sort((a, b) => spec(b) - spec(a));
     const phrases = [];
     const seen = new Set();
-    for (const tag of ranked.slice(0, 2)) {
+    for (const tag of ranked.slice(0, 3)) {
       const phrase = expand(tag);
       const key = phrase.toLowerCase();
       if (phrase && !seen.has(key)) {
@@ -368,6 +376,7 @@
       }).sort((a, b) => b.hits - a.hits || b.strength - a.strength);
       const total = tagList.length;
       const full = scored.filter((s) => s.hits >= total).map((s) => s.row);
+      if (total >= 2) return full;
       const almost = scored.filter((s) => s.hits >= Math.max(1, total - 1)).map((s) => s.row);
       const some = scored.filter((s) => s.hits > 0).map((s) => s.row);
       if (full.length) return full;
@@ -431,9 +440,11 @@
     return out;
   }
 
-  async function pornhub(q, page, daily) {
-    const url = daily
-      ? `https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=featured&page=${page + 1}`
+  async function pornhub(q, page, kind) {
+    const url = kind === "views"
+      ? `https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=mostviewed&page=${page + 1}`
+      : kind === "new"
+      ? `https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=newest&page=${page + 1}`
       : `https://www.pornhub.com/webmasters/search?search=${enc(q)}&thumbsize=large&page=${page + 1}`;
     return jsonList(await fetchText(url), "videos").map((row) => {
       const pageUrl = row.url || "";
@@ -443,9 +454,11 @@
       return item("Pornhub", "pornhub", row.title, pageUrl, row.default_thumb || row.thumb, embed, row.duration);
     });
   }
-  async function redtube(q, page, daily) {
-    const url = daily
-      ? `https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=featured&thumbsize=medium&page=${page + 1}`
+  async function redtube(q, page, kind) {
+    const url = kind === "views"
+      ? `https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=mostviewed&thumbsize=medium&page=${page + 1}`
+      : kind === "new"
+      ? `https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=newest&thumbsize=medium&page=${page + 1}`
       : `https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search=${enc(q)}&thumbsize=medium&page=${page + 1}`;
     return jsonList(await fetchText(url), "videos").map((wrap) => {
       const row = wrap.video || wrap;
@@ -453,9 +466,9 @@
       return item("RedTube", "redtube", row.title, row.url, row.default_thumb || row.thumb, id ? `https://embed.redtube.com/?id=${id}` : "", row.duration);
     });
   }
-  async function eporner(q, page, daily) {
-    const url = daily
-      ? `https://www.eporner.com/api/v2/video/search/?query=&per_page=20&page=${page + 1}&order=top-weekly&gay=0&lq=1&format=json`
+  async function eporner(q, page, kind) {
+    const url = kind
+      ? `https://www.eporner.com/api/v2/video/search/?query=&per_page=20&page=${page + 1}&order=${kind === "views" ? "most-popular" : "latest"}&gay=0&lq=1&format=json`
       : `https://www.eporner.com/api/v2/video/search/?query=${enc(q)}&per_page=20&page=${page + 1}&order=latest&gay=0&lq=1&format=json`;
     return jsonList(await fetchText(url), "videos").map((row) => {
       let thumb = "";
@@ -464,6 +477,35 @@
       const embed = row.embed || (row.id ? `https://www.eporner.com/embed/${row.id}` : "");
       return item("Eporner", "eporner", row.title, row.url, thumb, embed, row.length_min);
     });
+  }
+  async function kvs(provider, source, host, q, page, kind) {
+    const extra = page ? `?from_videos=${page + 1}` : "";
+    let url;
+    if (kind === "new") url = page === 0 ? `https://${host}/latest-updates/` : `https://${host}/latest-updates/${page + 1}/`;
+    else if (kind === "views") url = page === 0 ? `https://${host}/most-popular/` : `https://${host}/most-popular/${page + 1}/`;
+    else url = `https://${host}/search/${enc(q)}/${extra}`;
+    const body = await fetchText(url);
+    const seen = new Set();
+    const items = [];
+    const re = new RegExp(`href="((?:https://(?:www\\.)?${host.replace(/\./g, "\\.")})?/(?:videos|video|movies)/(\\d+)/[^"]+)"`, "gi");
+    for (const m of allMatches(re, body)) {
+      let pageUrl = m[1].startsWith("http") ? m[1].split("?")[0] : `https://${host}${m[1]}`;
+      if (seen.has(pageUrl)) continue;
+      seen.add(pageUrl);
+      const at = body.indexOf(m[0]);
+      const chunk = body.slice(Math.max(0, at - 120), at + 900);
+      const thumbM = /(?:data-original|data-src|src)="((?:https:)?\/\/[^"]+\.(?:jpg|jpeg|webp)[^"]*)"/i.exec(chunk);
+      let thumb = cleanThumb(thumbM ? thumbM[1] : "");
+      if (!thumb) {
+        const num = Number(m[2]);
+        const bucket = Math.floor(num / 1000) * 1000;
+        thumb = `https://${host}/contents/videos_screenshots/${bucket}/${num}/320x180/1.jpg`;
+      }
+      const title = pageUrl.replace(/\/+$/, "").split("/").pop().replace(/-/g, " ");
+      items.push(item(provider, source, title, pageUrl, thumb, "", ""));
+      if (items.length >= 40) break;
+    }
+    return items;
   }
   async function htmlPair(url, provider, source, re, prefix) {
     const body = await fetchText(url);
@@ -484,24 +526,36 @@
 
   const SITES = {
     pornhub, redtube, eporner,
-    async xvideos(q, page, daily) {
-      const url = daily ? (page === 0 ? "https://www.xvideos.com/" : `https://www.xvideos.com/new/${page + 1}`)
+    async xvideos(q, page, kind) {
+      const url = kind === "views"
+        ? (page === 0 ? "https://www.xvideos.com/best/" : `https://www.xvideos.com/best/${page + 1}`)
+        : kind === "new"
+        ? (page === 0 ? "https://www.xvideos.com/" : `https://www.xvideos.com/new/${page + 1}`)
         : `https://www.xvideos.com/?k=${enc(q)}&p=${page}`;
       return htmlPair(url, "XVideos", "xvideos", /href="(\/video[^"]+)"[\s\S]{0,900}?data-src="(https:[^"]+)"/gi, "https://www.xvideos.com");
     },
-    async xnxx(q, page, daily) {
-      const extra = page === 0 ? "" : `/${page}`;
-      const url = daily ? `https://www.xnxx.com/todays-selection${extra}` : `https://www.xnxx.com/search/${enc(q)}${extra}`;
+    async xnxx(q, page, kind) {
+      const extra = page === 0 ? "" : `/${page + 1}`;
+      const url = kind === "views"
+        ? (page === 0 ? "https://www.xnxx.com/best/" : `https://www.xnxx.com/best/${page + 1}`)
+        : kind === "new"
+        ? (page === 0 ? "https://www.xnxx.com/" : `https://www.xnxx.com/new/${page + 1}`)
+        : `https://www.xnxx.com/search/${enc(q)}${page === 0 ? "" : `/${page}`}`;
       return htmlPair(url, "XNXX", "xnxx", /href="(\/video-[^"]+)"[\s\S]{0,900}?data-src="(https:[^"]+)"/gi, "https://www.xnxx.com");
     },
-    async xhamster(q, page, daily) {
-      const url = daily ? (page === 0 ? "https://xhamster.com/best/daily" : `https://xhamster.com/best/daily/${page + 1}`)
+    async xhamster(q, page, kind) {
+      const url = kind === "views"
+        ? (page === 0 ? "https://xhamster.com/best" : `https://xhamster.com/best/${page + 1}`)
+        : kind === "new"
+        ? (page === 0 ? "https://xhamster.com/newest" : `https://xhamster.com/newest/${page + 1}`)
         : `https://xhamster.com/search/${enc(q)}${page === 0 ? "" : `?page=${page + 1}`}`;
       return htmlPair(url, "xHamster", "xhamster", /href="(https:\/\/xhamster\.com\/videos\/[^"]+)"[^>]*>[\s\S]{0,400}?(?:src|data-src)="(https:[^"]+)"/gi, "");
     },
-    async xxxbunker(q, page, daily) {
+    async xxxbunker(q, page, kind) {
       const extra = page > 0 ? `/${page + 1}` : "";
-      const url = daily ? "https://xxxbunker.com/" : `https://xxxbunker.com/search/${enc(q)}${extra}`;
+      const url = kind === "views" ? `https://xxxbunker.com/top${extra}`
+        : kind === "new" ? (page ? `https://xxxbunker.com/${page + 1}` : "https://xxxbunker.com/")
+        : `https://xxxbunker.com/search/${enc(q)}${extra}`;
       const body = await fetchText(url);
       const items = [];
       for (const m of allMatches(/(?:src|data-src)="https:\/\/thumbs\.xxxbunker\.com\/(\d+)\.jpg"[^>]*alt="([^"]*)"/gi, body)) {
@@ -510,24 +564,34 @@
       }
       return items;
     },
-    async tnaflix(q, page, daily) {
-      const url = daily ? "https://www.tnaflix.com/" : `https://www.tnaflix.com/search.php?what=${enc(q)}${page > 0 ? `&page=${page + 1}` : ""}`;
+    async tnaflix(q, page, kind) {
+      const url = kind === "views" ? `https://www.tnaflix.com/popular${page > 0 ? `?page=${page + 1}` : ""}`
+        : kind === "new" ? `https://www.tnaflix.com/${page > 0 ? `?page=${page + 1}` : ""}`
+        : `https://www.tnaflix.com/search.php?what=${enc(q)}${page > 0 ? `&page=${page + 1}` : ""}`;
       return htmlPair(url, "TNAflix", "tnaflix", /href="(https:\/\/www\.tnaflix\.com\/[^"]+\/video\d+)"[\s\S]{0,800}?(?:data-src|src)="(https:\/\/(?:cdnl|img)\.tnaflix\.com\/[^"]+\.jpg)"/gi, "");
     },
-    async drtuber(q, page, daily) {
-      const url = daily ? "https://www.drtuber.com/" : `https://www.drtuber.com/search/videos/${enc(q)}${page > 0 ? `/${page + 1}` : ""}`;
+    async drtuber(q, page, kind) {
+      const url = kind === "views" ? (page === 0 ? "https://www.drtuber.com/most-popular/" : `https://www.drtuber.com/most-popular/${page + 1}`)
+        : kind === "new" ? (page === 0 ? "https://www.drtuber.com/latest-updates/" : `https://www.drtuber.com/latest-updates/${page + 1}`)
+        : `https://www.drtuber.com/search/videos/${enc(q)}${page > 0 ? `/${page + 1}` : ""}`;
       return htmlPair(url, "DrTuber", "drtuber", /href="(\/video\/\d+\/[^"]+)"[^>]*>\s*<img[^>]+src="(https:[^"]+)"/gi, "https://www.drtuber.com");
     },
-    async pornone(q, page, daily) {
-      const url = daily ? "https://www.pornone.com/" : `https://www.pornone.com/search${page > 0 ? `/${page + 1}` : ""}/?q=${enc(q)}`;
+    async pornone(q, page, kind) {
+      const url = kind === "views" ? (page === 0 ? "https://www.pornone.com/most-viewed/" : `https://www.pornone.com/most-viewed/${page + 1}/`)
+        : kind === "new" ? (page === 0 ? "https://www.pornone.com/" : `https://www.pornone.com/${page + 1}/`)
+        : `https://www.pornone.com/search${page > 0 ? `/${page + 1}` : ""}/?q=${enc(q)}`;
       return htmlPair(url, "PornOne", "pornone", /href="(https:\/\/(?:www\.)?pornone\.com\/[^"]+\/\d+\/)"[\s\S]{0,400}?src="(https:\/\/th-eu\d+\.pornone\.com\/[^"]+)"/gi, "");
     },
-    async okxxx(q, page, daily) {
-      const url = daily ? "https://ok.xxx/" : `https://ok.xxx/search/${enc(q)}/`;
+    async okxxx(q, page, kind) {
+      const url = kind === "views" ? (page === 0 ? "https://ok.xxx/most-popular/" : `https://ok.xxx/most-popular/${page + 1}/`)
+        : kind === "new" ? (page === 0 ? "https://ok.xxx/latest-updates/" : `https://ok.xxx/latest-updates/${page + 1}/`)
+        : `https://ok.xxx/search/${enc(q)}/`;
       return htmlPair(url, "OK.xxx", "okxxx", /href="(\/video\/\d+\/)"[^>]*title="([^"]*)"[\s\S]{0,700}?data-original="(https:[^"]+)"/gi, "https://ok.xxx").then((rows) => rows);
     },
-    async porn00(q, page, daily) {
-      const url = daily ? "https://www.porn00.org/latest/" : `https://www.porn00.org/q/${enc(q)}/`;
+    async porn00(q, page, kind) {
+      const url = kind === "views" ? (page === 0 ? "https://www.porn00.org/most-popular/" : `https://www.porn00.org/most-popular/${page + 1}/`)
+        : kind === "new" ? (page === 0 ? "https://www.porn00.org/latest/" : `https://www.porn00.org/latest/${page + 1}/`)
+        : `https://www.porn00.org/q/${enc(q)}/`;
       const body = await fetchText(url);
       const items = [];
       for (const m of allMatches(/href="(https:\/\/www.porn00.org\/video\/[^"]+)"[^>]*title="([^"]*)"[\s\S]{0,600}?data-original="(https:[^"]+)"/gi, body)) {
@@ -536,16 +600,20 @@
       }
       return items;
     },
-    async xxxfiles(q, page, daily) {
-      const url = daily ? "https://www.xxxfiles.com/" : `https://www.xxxfiles.com/?s=${enc(q)}`;
+    async xxxfiles(q, page, kind) {
+      const url = kind ? (page === 0 ? "https://www.xxxfiles.com/" : `https://www.xxxfiles.com/page/${page + 1}/`)
+        : `https://www.xxxfiles.com/?s=${enc(q)}`;
       return htmlPair(url, "XXXFiles", "xxxfiles", /href="(https:\/\/www.xxxfiles.com\/videos\/\d+\/[^"]+)"[\s\S]{0,500}?src="(https:\/\/img.xxxfiles.com\/[^"]+)"/gi, "");
     },
-    async xmoviesforyou(q, page, daily) {
-      const url = daily ? "https://xmoviesforyou.com/" : `https://xmoviesforyou.com/?s=${enc(q)}`;
+    async xmoviesforyou(q, page, kind) {
+      const url = kind ? (page === 0 ? "https://xmoviesforyou.com/" : `https://xmoviesforyou.com/page/${page + 1}/`)
+        : `https://xmoviesforyou.com/?s=${enc(q)}`;
       return htmlPair(url, "XMoviesForYou", "xmoviesforyou", /href="(\/[a-z0-9-]+)"[^>]*>[\s\S]{0,500}?src="(https:\/\/xmoviescdn\.online\/[^"]+)"/gi, "https://xmoviesforyou.com");
     },
-    async whoreshub(q, page, daily) {
-      const url = daily ? "https://www.whoreshub.com/" : `https://www.whoreshub.com/search/${enc(q)}/`;
+    async whoreshub(q, page, kind) {
+      const url = kind === "views" ? (page === 0 ? "https://www.whoreshub.com/most-popular/" : `https://www.whoreshub.com/most-popular/${page + 1}/`)
+        : kind === "new" ? (page === 0 ? "https://www.whoreshub.com/latest-updates/" : `https://www.whoreshub.com/latest-updates/${page + 1}/`)
+        : `https://www.whoreshub.com/search/${enc(q)}/`;
       const body = await fetchText(url);
       const items = [];
       const seen = new Set();
@@ -560,13 +628,49 @@
       }
       return items;
     },
-    async yespornvip(q, page, daily) {
-      const url = daily ? "https://yespornvip.com/" : `https://yespornvip.com/?s=${enc(q)}`;
+    async yespornvip(q, page, kind) {
+      const url = kind ? (page === 0 ? "https://yespornvip.com/" : `https://yespornvip.com/page/${page + 1}/`)
+        : `https://yespornvip.com/?s=${enc(q)}`;
       return htmlPair(url, "YesPornVIP", "yespornvip", /href="(https:\/\/yespornvip.com\/[a-z0-9-]+\/)"[\s\S]{0,800}?(?:data-src|src)="(https:\/\/yespornvip.com\/wp-content\/uploads\/thumbsx\/[^"]+)"/gi, "");
     },
-    async justporn(q, page, daily) {
-      const url = daily ? "https://www.justporn.to/" : `https://www.justporn.to/search/${enc(q)}/`;
+    async justporn(q, page, kind) {
+      const url = kind ? (page === 0 ? "https://www.justporn.to/" : `https://www.justporn.to/page/${page + 1}/`)
+        : `https://www.justporn.to/search/${enc(q)}/`;
       return htmlPair(url, "JustPorn", "justporn", /href="(https:\/\/(?:www\.)?justporn.to\/[a-z0-9-]+\/)"[\s\S]{0,700}?src="(https:\/\/justporn.to\/cover_upload\/[^"]+)"/gi, "");
+    },
+    async spankbang(q, page, kind) {
+      const extra = page ? `${page + 1}/` : "";
+      const url = kind === "views" ? `https://spankbang.com/trending_videos/${extra}`
+        : kind === "new" ? `https://spankbang.com/new_videos/${extra}`
+        : `https://spankbang.com/s/${enc(q)}/${extra}`;
+      return htmlPair(url, "SpankBang", "spankbang", /href="(\/[a-z0-9]+\/video\/[^"]+)"[\s\S]{0,900}?(?:data-src|src)="((?:https:)?\/\/[^"]+\.(?:jpg|jpeg|webp)[^"]*)"/gi, "https://spankbang.com");
+    },
+    async txxx(q, page, daily) {
+      return kvs("TXXX", "txxx", "txxx.com", q, page, daily);
+    },
+    async "3movs"(q, page, daily) {
+      return kvs("3Movs", "3movs", "www.3movs.com", q, page, daily);
+    },
+    async hdzog(q, page, daily) {
+      return kvs("HDZog", "hdzog", "hdzog.com", q, page, daily);
+    },
+    async hotmovs(q, page, daily) {
+      return kvs("HotMovs", "hotmovs", "hotmovs.com", q, page, daily);
+    },
+    async porngo(q, page, daily) {
+      return kvs("PornGo", "porngo", "www.porngo.com", q, page, daily);
+    },
+    async youjizz(q, page, kind) {
+      const slug = enc(q).replace(/%20/g, "-");
+      const url = kind === "views"
+        ? `https://www.youjizz.com/most-popular/${page + 1}.html`
+        : kind === "new"
+        ? `https://www.youjizz.com/newest-clips/${page + 1}.html`
+        : `https://www.youjizz.com/search/${slug}-${page + 1}.html`;
+      return htmlPair(url, "YouJizz", "youjizz", /href="(\/videos\/[^"]+\.html)"[\s\S]{0,800}?(?:data-original|src)="((?:https:)?\/\/[^"]+\.(?:jpg|jpeg|webp)[^"]*)"/gi, "https://www.youjizz.com");
+    },
+    async xozilla(q, page, daily) {
+      return kvs("Xozilla", "xozilla", "www.xozilla.com", q, page, daily);
     }
   };
 
@@ -576,11 +680,11 @@
     async search({ q, source, page, tags }) {
       const query = q || "amateur";
       if (blocked(query)) return { error: "That search is blocked. GitVidX only shows legal, consensual, 18+ videos.", items: [], next: false, sources: [] };
-      const daily = isDaily(query);
+      const kind = feedKind(query);
       const tagList = String(tags || "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 5);
       const { content, length } = splitLength(tagList);
       let send = query;
-      if (!daily) {
+      if (!kind) {
         if (content.length) send = focused(content);
         else if (length) send = "amateur";
         else send = expand(query);
@@ -589,7 +693,7 @@
       const jobs = (!source || source === "all" || !SITES[source]) ? ALL : [source];
       const results = await Promise.all(jobs.map(async (name) => {
         try {
-          const found = (await SITES[name](send, Number(page) || 0, daily)).filter(allowed);
+          const found = (await SITES[name](send, Number(page) || 0, kind)).filter(allowed);
           return { name, found };
         } catch (err) {
           return { name, found: [], error: String(err && err.message || err) };
@@ -611,7 +715,7 @@
         } else if (row.error) errors.push(`${row.name}: ${row.error}`);
       }
       const fetched = items.length > 0;
-      if (daily) {
+      if (kind) {
         const buckets = {};
         const order = [];
         for (const it of items) {
@@ -634,10 +738,10 @@
       return {
         query,
         items,
-        next: fetched && !daily,
+        next: fetched,
         sources,
-        mode: daily ? "daily" : "search",
-        date: daily ? today() : null,
+        mode: kind || "search",
+        date: kind ? today() : null,
         error: items.length || !errors.length ? null : errors.join("; ")
       };
     }

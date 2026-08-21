@@ -55,6 +55,8 @@ final class SearchEngine {
             "That search is blocked. GitVidX only shows legal, consensual, 18+ videos. "
                     + "No leaks, hidden cameras, or non-consensual content.";
     static final String DAILY_Q = "__daily__";
+    static final String NEW_Q = "__new__";
+    static final String VIEWS_Q = "__views__";
     private static final Set<String> WEAK_SOLO = new HashSet<>(Arrays.asList(
             "black", "dark", "red", "pink", "blue", "purple", "grey", "gray", "silver",
             "large", "small", "medium", "big", "huge", "tiny", "little", "round", "full",
@@ -88,8 +90,8 @@ final class SearchEngine {
         if (query == null || query.trim().isEmpty()) {
             query = "amateur";
         }
-        if (isDaily(query) && !refresh) {
-            JSONObject cached = loadDaily(source, page);
+        if (isFeed(query) && !refresh) {
+            JSONObject cached = loadDaily(source, page, feedKind(query));
             if (cached != null) return cached;
         }
         final String q = query;
@@ -102,7 +104,7 @@ final class SearchEngine {
         }
         final String length = lengthTag;
         final String send;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             send = query;
         } else if (!contentTags.isEmpty()) {
             send = focusedSearchQuery(contentTags);
@@ -134,6 +136,14 @@ final class SearchEngine {
             jobs.add(new NamedSearch("whoreshub", this::whoreshub));
             jobs.add(new NamedSearch("yespornvip", this::yespornvip));
             jobs.add(new NamedSearch("justporn", this::justporn));
+            jobs.add(new NamedSearch("spankbang", this::spankbang));
+            jobs.add(new NamedSearch("txxx", this::txxx));
+            jobs.add(new NamedSearch("3movs", this::threemovs));
+            jobs.add(new NamedSearch("hdzog", this::hdzog));
+            jobs.add(new NamedSearch("hotmovs", this::hotmovs));
+            jobs.add(new NamedSearch("porngo", this::porngo));
+            jobs.add(new NamedSearch("youjizz", this::youjizz));
+            jobs.add(new NamedSearch("xozilla", this::xozilla));
         } else {
             jobs.add(new NamedSearch(source, pick(source)));
         }
@@ -177,7 +187,7 @@ final class SearchEngine {
         }
         List<JSONObject> ordered = new ArrayList<>(unique.values());
         boolean fetched = !ordered.isEmpty();
-        if (isDaily(q)) {
+        if (isFeed(q)) {
             ordered = interleave(ordered);
         } else {
             ordered = rankItems(ordered, q, contentTags);
@@ -196,10 +206,11 @@ final class SearchEngine {
         JSONObject payload = new JSONObject();
         payload.put("query", q);
         payload.put("items", out);
-        payload.put("next", fetched && !isDaily(q));
+        payload.put("next", fetched);
         payload.put("sources", sources);
-        payload.put("mode", isDaily(q) ? "daily" : "search");
-        if (isDaily(q)) {
+        String kind = feedKind(q);
+        payload.put("mode", kind.isEmpty() ? "search" : kind);
+        if (!kind.isEmpty()) {
             payload.put("date", todayStamp());
         } else {
             payload.put("date", JSONObject.NULL);
@@ -209,8 +220,8 @@ final class SearchEngine {
         } else {
             payload.put("error", JSONObject.NULL);
         }
-        if (isDaily(q) && out.length() > 0) {
-            saveDaily(source, page, payload);
+        if (!kind.isEmpty() && out.length() > 0) {
+            saveDaily(source, page, payload, kind);
         }
         return payload;
     }
@@ -253,8 +264,20 @@ final class SearchEngine {
         }
     }
 
+    private String feedKind(String query) {
+        if (query == null) return "";
+        String q = query.trim().toLowerCase(Locale.US);
+        if (q.equals(NEW_Q) || q.equals(DAILY_Q)) return "new";
+        if (q.equals(VIEWS_Q)) return "views";
+        return "";
+    }
+
     private boolean isDaily(String query) {
-        return query != null && DAILY_Q.equalsIgnoreCase(query.trim());
+        return "new".equals(feedKind(query));
+    }
+
+    private boolean isFeed(String query) {
+        return !feedKind(query).isEmpty();
     }
 
     private String canonQuery(String query) {
@@ -337,6 +360,7 @@ final class SearchEngine {
     }
 
     private String expandSearchQuery(String query) {
+        if (isFeed(query)) return query == null ? "" : query.trim();
         switch (canonQuery(query)) {
             case "step-sis": return "stepsister";
             case "onlyfans": return "onlyfans";
@@ -661,7 +685,7 @@ final class SearchEngine {
         List<String> ranked = new ArrayList<>(tags);
         ranked.sort((a, b) -> Integer.compare(focusScore(b), focusScore(a)));
         LinkedHashSet<String> phrases = new LinkedHashSet<>();
-        for (int i = 0; i < ranked.size() && phrases.size() < 2; i++) {
+        for (int i = 0; i < ranked.size() && phrases.size() < 3; i++) {
             String phrase = expandSearchQuery(ranked.get(i));
             if (phrase != null && !phrase.trim().isEmpty()) phrases.add(phrase);
         }
@@ -898,6 +922,7 @@ final class SearchEngine {
                 if (row[0] >= Math.max(1, total - 1)) almost.add(item);
                 if (row[0] > 0) some.add(item);
             }
+            if (total >= 2) return full;
             if (!full.isEmpty()) return full;
             if (!almost.isEmpty()) return almost;
             return some;
@@ -947,16 +972,17 @@ final class SearchEngine {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
     }
 
-    private File dailyFile(String source, int page) {
+    private File dailyFile(String source, int page, String kind) {
         String safe = (source == null || source.isEmpty() ? "all" : source)
                 .toLowerCase(Locale.US).replaceAll("[^a-z0-9]+", "-");
+        String label = kind == null || kind.isEmpty() ? "new" : kind;
         return new File(System.getProperty("java.io.tmpdir"),
-                "gitvidx-daily-" + todayStamp() + "-" + safe + "-" + page + ".json");
+                "gitvidx-feed-" + label + "-" + todayStamp() + "-" + safe + "-" + page + ".json");
     }
 
-    private JSONObject loadDaily(String source, int page) {
+    private JSONObject loadDaily(String source, int page, String kind) {
         try {
-            File file = dailyFile(source, page);
+            File file = dailyFile(source, page, kind);
             if (!file.isFile()) return null;
             String text = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
             JSONObject data = new JSONObject(text);
@@ -969,8 +995,8 @@ final class SearchEngine {
         return null;
     }
 
-    private void saveDaily(String source, int page, JSONObject payload) {
-        File file = dailyFile(source, page);
+    private void saveDaily(String source, int page, JSONObject payload, String kind) {
+        File file = dailyFile(source, page, kind);
         File dir = file.getParentFile();
         if (dir != null) {
             File[] old = dir.listFiles((d, name) -> name.startsWith("gitvidx-daily-") && name.endsWith(".json"));
@@ -1029,13 +1055,24 @@ final class SearchEngine {
             case "whoreshub": return this::whoreshub;
             case "yespornvip": return this::yespornvip;
             case "justporn": return this::justporn;
+            case "spankbang": return this::spankbang;
+            case "txxx": return this::txxx;
+            case "3movs": return this::threemovs;
+            case "hdzog": return this::hdzog;
+            case "hotmovs": return this::hotmovs;
+            case "porngo": return this::porngo;
+            case "youjizz": return this::youjizz;
+            case "xozilla": return this::xozilla;
             default: return this::pornhub;
         }
     }
 
     private List<JSONObject> pornhub(String query, int page) throws Exception {
-        String url = isDaily(query)
-                ? "https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=featured&page=" + (page + 1)
+        String kind = feedKind(query);
+        String url = "views".equals(kind)
+                ? "https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=mostviewed&page=" + (page + 1)
+                : "new".equals(kind)
+                ? "https://www.pornhub.com/webmasters/search?thumbsize=large&ordering=newest&page=" + (page + 1)
                 : "https://www.pornhub.com/webmasters/search?search=" + enc(query)
                 + "&thumbsize=large&page=" + (page + 1);
         JSONObject data = new JSONObject(fetchText(url));
@@ -1084,8 +1121,11 @@ final class SearchEngine {
     }
 
     private List<JSONObject> redtube(String query, int page) throws Exception {
-        String url = isDaily(query)
-                ? "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=featured&thumbsize=medium&page=" + (page + 1)
+        String kind = feedKind(query);
+        String url = "views".equals(kind)
+                ? "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=mostviewed&thumbsize=medium&page=" + (page + 1)
+                : "new".equals(kind)
+                ? "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&ordering=newest&thumbsize=medium&page=" + (page + 1)
                 : "https://api.redtube.com/?data=redtube.Videos.searchVideos&output=json&search="
                 + enc(query) + "&thumbsize=medium&page=" + (page + 1);
         JSONObject data = new JSONObject(fetchText(url));
@@ -1107,9 +1147,11 @@ final class SearchEngine {
     }
 
     private List<JSONObject> eporner(String query, int page) throws Exception {
-        String url = isDaily(query)
+        String kind = feedKind(query);
+        String order = "views".equals(kind) ? "most-popular" : "latest";
+        String url = !kind.isEmpty()
                 ? "https://www.eporner.com/api/v2/video/search/?query=&per_page=20&page=" + (page + 1)
-                + "&thumbsize=medium&order=top-weekly&gay=0&lq=1&format=json"
+                + "&thumbsize=medium&order=" + order + "&gay=0&lq=1&format=json"
                 : "https://www.eporner.com/api/v2/video/search/?query=" + enc(query)
                 + "&per_page=20&page=" + (page + 1) + "&thumbsize=medium&order=latest&gay=0&lq=1&format=json";
         JSONObject data = new JSONObject(fetchText(url));
@@ -1139,7 +1181,10 @@ final class SearchEngine {
     }
 
     private List<JSONObject> xvideos(String query, int page) throws Exception {
-        String url = isDaily(query)
+        String kind = feedKind(query);
+        String url = "views".equals(kind)
+                ? (page == 0 ? "https://www.xvideos.com/best/" : "https://www.xvideos.com/best/" + (page + 1))
+                : "new".equals(kind)
                 ? (page == 0 ? "https://www.xvideos.com/" : "https://www.xvideos.com/new/" + (page + 1))
                 : "https://www.xvideos.com/?k=" + enc(query) + "&p=" + page;
         return htmlVideos(
@@ -1148,16 +1193,18 @@ final class SearchEngine {
                 "xvideos",
                 Pattern.compile("href=\"(/video[^\"]+)\"[\\s\\S]{0,900}?data-src=\"(https://[^\"]+)\"", Pattern.CASE_INSENSITIVE),
                 "https://www.xvideos.com",
-                isDaily(query) ? DESKTOP_UA : BROWSER_UA
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
         );
     }
 
     private List<JSONObject> xnxx(String query, int page) throws Exception {
-        String extra = page == 0 ? "" : ("/" + page);
-        String url = isDaily(query)
-                ? "https://www.xnxx.com/todays-selection" + extra
-                : "https://www.xnxx.com/search/" + enc(query) + extra;
-        String body = isDaily(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
+        String kind = feedKind(query);
+        String url = "views".equals(kind)
+                ? (page == 0 ? "https://www.xnxx.com/best/" : "https://www.xnxx.com/best/" + (page + 1))
+                : "new".equals(kind)
+                ? (page == 0 ? "https://www.xnxx.com/" : "https://www.xnxx.com/new/" + (page + 1))
+                : "https://www.xnxx.com/search/" + enc(query) + (page == 0 ? "" : ("/" + page));
+        String body = isFeed(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
         List<JSONObject> items = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
         Matcher matcher = Pattern.compile(
@@ -1175,9 +1222,12 @@ final class SearchEngine {
     }
 
     private List<JSONObject> xhamster(String query, int page) throws Exception {
+        String kind = feedKind(query);
         String url;
-        if (isDaily(query)) {
-            url = page == 0 ? "https://xhamster.com/best/daily" : "https://xhamster.com/best/daily/" + (page + 1);
+        if ("views".equals(kind)) {
+            url = page == 0 ? "https://xhamster.com/best" : "https://xhamster.com/best/" + (page + 1);
+        } else if ("new".equals(kind)) {
+            url = page == 0 ? "https://xhamster.com/newest" : "https://xhamster.com/newest/" + (page + 1);
         } else {
             String extra = page == 0 ? "" : ("?page=" + (page + 1));
             url = "https://xhamster.com/search/" + enc(query) + extra;
@@ -1188,7 +1238,7 @@ final class SearchEngine {
                 "xhamster",
                 Pattern.compile("href=\"(https://xhamster\\.com/videos/[^\"]+)\"[^>]*>.*?(?:src|data-src)=\"(https://[^\"]+)\"", Pattern.CASE_INSENSITIVE | Pattern.DOTALL),
                 "",
-                isDaily(query) ? DESKTOP_UA : BROWSER_UA
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
         );
     }
 
@@ -1347,10 +1397,10 @@ final class SearchEngine {
 
     private List<JSONObject> xxxbunker(String query, int page) throws Exception {
         String extra = page > 0 ? ("/" + (page + 1)) : "";
-        String url = isDaily(query)
+        String url = isFeed(query)
                 ? "https://xxxbunker.com/" + extra.replaceFirst("^/", "")
                 : "https://xxxbunker.com/search/" + enc(query).replace("%20", "+") + extra;
-        String body = isDaily(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
+        String body = isFeed(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
         List<JSONObject> items = new ArrayList<>();
         Matcher matcher = Pattern.compile(
                 "(?:src|data-src)=\"https://thumbs\\.xxxbunker\\.com/(\\d+)\\.jpg\"[^>]*alt=\"([^\"]*)\"",
@@ -1365,13 +1415,13 @@ final class SearchEngine {
 
     private List<JSONObject> tnaflix(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page > 0 ? "https://www.tnaflix.com/?page=" + (page + 1) : "https://www.tnaflix.com/";
         } else {
             String extra = page > 0 ? ("&page=" + (page + 1)) : "";
             url = "https://www.tnaflix.com/search.php?what=" + enc(query) + extra;
         }
-        String body = isDaily(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
+        String body = isFeed(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
         List<JSONObject> items = new ArrayList<>();
         Matcher matcher = Pattern.compile("(<div data-vid=\"\\d+\"[\\s\\S]{0,3000}?</div>\\s*</div>)", Pattern.CASE_INSENSITIVE).matcher(body);
         while (matcher.find() && items.size() < 40) {
@@ -1388,7 +1438,7 @@ final class SearchEngine {
 
     private List<JSONObject> drtuber(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://www.drtuber.com/" : "https://www.drtuber.com/latest-updates/" + (page + 1);
         } else {
             String extra = page > 0 ? ("/" + (page + 1)) : "";
@@ -1400,7 +1450,7 @@ final class SearchEngine {
                 "drtuber",
                 Pattern.compile("href=\"(/video/\\d+/[^\"]+)\"[^>]*>\\s*<img[^>]+src=\"(https://[^\"]+)\"", Pattern.CASE_INSENSITIVE),
                 "https://www.drtuber.com",
-                isDaily(query) ? DESKTOP_UA : BROWSER_UA
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
         );
     }
 
@@ -1417,13 +1467,13 @@ final class SearchEngine {
 
     private List<JSONObject> pornone(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://www.pornone.com/" : "https://www.pornone.com/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ("/" + (page + 1)) : "";
             url = "https://www.pornone.com/search" + extra + "/?q=" + enc(query);
         }
-        String body = isDaily(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
+        String body = isFeed(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
         Map<String, String> thumbs = new LinkedHashMap<>();
         Matcher tm = Pattern.compile("(https://th-eu\\d+\\.pornone\\.com/t/\\d+/(\\d+)/[^\"\\s]+)").matcher(body);
         while (tm.find()) thumbs.put(tm.group(2), cleanThumb(tm.group(1)));
@@ -1450,13 +1500,13 @@ final class SearchEngine {
 
     private List<JSONObject> okxxx(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://ok.xxx/" : "https://ok.xxx/latest-updates/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ("?from_videos=" + (page + 1)) : "";
             url = "https://ok.xxx/search/" + enc(query) + "/" + extra;
         }
-        String body = isDaily(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
+        String body = isFeed(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
         List<JSONObject> items = new ArrayList<>();
         Matcher matcher = Pattern.compile("href=\"(/video/\\d+/)\"[^>]*title=\"([^\"]*)\"[\\s\\S]{0,700}?data-original=\"(https://[^\"]+)\"", Pattern.CASE_INSENSITIVE).matcher(body);
         while (matcher.find() && items.size() < 40) {
@@ -1467,13 +1517,13 @@ final class SearchEngine {
 
     private List<JSONObject> porn00(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://www.porn00.org/latest/" : "https://www.porn00.org/latest/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ((page + 1) + "/") : "";
             url = "https://www.porn00.org/q/" + enc(query) + "/" + extra;
         }
-        String body = isDaily(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
+        String body = isFeed(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
         List<JSONObject> items = new ArrayList<>();
         Matcher matcher = Pattern.compile("href=\"(https://www.porn00.org/video/[^\"]+)\"[^>]*title=\"([^\"]*)\"[\\s\\S]{0,600}?data-original=\"(https://[^\"]+)\"", Pattern.CASE_INSENSITIVE).matcher(body);
         while (matcher.find() && items.size() < 40) {
@@ -1484,7 +1534,7 @@ final class SearchEngine {
 
     private List<JSONObject> xxxfiles(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://www.xxxfiles.com/" : "https://www.xxxfiles.com/page/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ("&page=" + (page + 1)) : "";
@@ -1496,13 +1546,13 @@ final class SearchEngine {
                 "xxxfiles",
                 Pattern.compile("href=\"(https://www.xxxfiles.com/videos/\\d+/[^\"]+)\"[\\s\\S]{0,500}?src=\"(https://img.xxxfiles.com/[^\"]+)\"", Pattern.CASE_INSENSITIVE),
                 "",
-                isDaily(query) ? DESKTOP_UA : BROWSER_UA
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
         );
     }
 
     private List<JSONObject> xmoviesforyou(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://xmoviesforyou.com/" : "https://xmoviesforyou.com/page/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ("&paged=" + (page + 1)) : "";
@@ -1514,19 +1564,19 @@ final class SearchEngine {
                 "xmoviesforyou",
                 Pattern.compile("href=\"(/[a-z0-9-]+)\"[^>]*>[\\s\\S]{0,500}?src=\"(https://xmoviescdn\\.online/[^\"]+)\"", Pattern.CASE_INSENSITIVE),
                 "https://xmoviesforyou.com",
-                isDaily(query) ? DESKTOP_UA : BROWSER_UA
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
         );
     }
 
     private List<JSONObject> whoreshub(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://www.whoreshub.com/" : "https://www.whoreshub.com/latest-updates/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ("?from_videos=" + (page + 1)) : "";
             url = "https://www.whoreshub.com/search/" + enc(query) + "/" + extra;
         }
-        String body = isDaily(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
+        String body = isFeed(query) ? fetchHtml(url, DESKTOP_UA) : fetchText(url);
         List<JSONObject> items = new ArrayList<>();
         Matcher matcher = Pattern.compile("href=\"(https://www.whoreshub.com/videos/(\\d+)/[^\"]+)\"").matcher(body);
         while (matcher.find() && items.size() < 40) {
@@ -1541,7 +1591,7 @@ final class SearchEngine {
 
     private List<JSONObject> yespornvip(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://yespornvip.com/" : "https://yespornvip.com/page/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ("&paged=" + (page + 1)) : "";
@@ -1553,13 +1603,13 @@ final class SearchEngine {
                 "yespornvip",
                 Pattern.compile("href=\"(https://yespornvip.com/[a-z0-9-]+/)\"[\\s\\S]{0,800}?(?:data-src|src)=\"(https://yespornvip.com/wp-content/uploads/thumbsx/[^\"]+)\"", Pattern.CASE_INSENSITIVE),
                 "",
-                isDaily(query) ? DESKTOP_UA : BROWSER_UA
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
         );
     }
 
     private List<JSONObject> justporn(String query, int page) throws Exception {
         String url;
-        if (isDaily(query)) {
+        if (isFeed(query)) {
             url = page == 0 ? "https://www.justporn.to/" : "https://www.justporn.to/page/" + (page + 1) + "/";
         } else {
             String extra = page > 0 ? ("page/" + (page + 1) + "/") : "";
@@ -1571,7 +1621,105 @@ final class SearchEngine {
                 "justporn",
                 Pattern.compile("href=\"(https://(?:www\\.)?justporn.to/[a-z0-9-]+/)\"[\\s\\S]{0,700}?src=\"(https://justporn.to/cover_upload/[^\"]+)\"", Pattern.CASE_INSENSITIVE),
                 "",
-                isDaily(query) ? DESKTOP_UA : BROWSER_UA
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
+        );
+    }
+
+    private List<JSONObject> kvs(String provider, String source, String host, String query, int page) throws Exception {
+        String extra = page > 0 ? ("?from_videos=" + (page + 1)) : "";
+        String kind = feedKind(query);
+        String url;
+        if ("new".equals(kind)) {
+            url = page == 0 ? ("https://" + host + "/latest-updates/") : ("https://" + host + "/latest-updates/" + (page + 1) + "/");
+        } else if ("views".equals(kind)) {
+            url = page == 0 ? ("https://" + host + "/most-popular/") : ("https://" + host + "/most-popular/" + (page + 1) + "/");
+        } else {
+            url = "https://" + host + "/search/" + enc(query) + "/" + extra;
+        }
+        String body = fetchHtml(url, isFeed(query) ? DESKTOP_UA : BROWSER_UA);
+        List<JSONObject> items = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        Matcher matcher = Pattern.compile(
+                "href=\"((?:https://(?:www\\.)?" + Pattern.quote(host) + ")?/(?:videos|video|movies)/(\\d+)/[^\"]+)\"",
+                Pattern.CASE_INSENSITIVE).matcher(body);
+        while (matcher.find() && items.size() < 40) {
+            String path = matcher.group(1);
+            String pageUrl = path.startsWith("http") ? path.split("\\?")[0] : ("https://" + host + path);
+            if (!seen.add(pageUrl)) continue;
+            int at = matcher.start();
+            String chunk = body.substring(Math.max(0, at - 120), Math.min(body.length(), at + 900));
+            Matcher thumbM = Pattern.compile("(?:data-original|data-src|src)=\"((?:https:)?//[^\"]+\\.(?:jpg|jpeg|webp)[^\"]*)\"", Pattern.CASE_INSENSITIVE).matcher(chunk);
+            String thumb = thumbM.find() ? cleanThumb(thumbM.group(1)) : "";
+            if (thumb.isEmpty()) {
+                int num = Integer.parseInt(matcher.group(2));
+                int bucket = (num / 1000) * 1000;
+                thumb = "https://" + host + "/contents/videos_screenshots/" + bucket + "/" + num + "/320x180/1.jpg";
+            }
+            String title = pageUrl.replaceAll(".*/", "").replace("-", " ");
+            items.add(item(provider, source, title, pageUrl, thumb, "", ""));
+        }
+        return fillDurations(items, body);
+    }
+
+    private List<JSONObject> txxx(String query, int page) throws Exception {
+        return kvs("TXXX", "txxx", "txxx.com", query, page);
+    }
+
+    private List<JSONObject> threemovs(String query, int page) throws Exception {
+        return kvs("3Movs", "3movs", "www.3movs.com", query, page);
+    }
+
+    private List<JSONObject> hdzog(String query, int page) throws Exception {
+        return kvs("HDZog", "hdzog", "hdzog.com", query, page);
+    }
+
+    private List<JSONObject> hotmovs(String query, int page) throws Exception {
+        return kvs("HotMovs", "hotmovs", "hotmovs.com", query, page);
+    }
+
+    private List<JSONObject> porngo(String query, int page) throws Exception {
+        return kvs("PornGo", "porngo", "www.porngo.com", query, page);
+    }
+
+    private List<JSONObject> xozilla(String query, int page) throws Exception {
+        return kvs("Xozilla", "xozilla", "www.xozilla.com", query, page);
+    }
+
+    private List<JSONObject> spankbang(String query, int page) throws Exception {
+        String kind = feedKind(query);
+        String extra = page > 0 ? (page + 1) + "/" : "";
+        String url = "views".equals(kind)
+                ? "https://spankbang.com/trending_videos/" + extra
+                : "new".equals(kind)
+                ? "https://spankbang.com/new_videos/" + extra
+                : "https://spankbang.com/s/" + enc(query) + "/" + extra;
+        return htmlVideos(
+                url,
+                "SpankBang",
+                "spankbang",
+                Pattern.compile("href=\"(/[a-z0-9]+/video/[^\"]+)\"[\\s\\S]{0,900}?(?:data-src|src)=\"((?:https:)?//[^\"]+\\.(?:jpg|jpeg|webp)[^\"]*)\"", Pattern.CASE_INSENSITIVE),
+                "https://spankbang.com",
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
+        );
+    }
+
+    private List<JSONObject> youjizz(String query, int page) throws Exception {
+        String kind = feedKind(query);
+        String url;
+        if ("views".equals(kind)) {
+            url = "https://www.youjizz.com/most-popular/" + (page + 1) + ".html";
+        } else if ("new".equals(kind)) {
+            url = "https://www.youjizz.com/newest-clips/" + (page + 1) + ".html";
+        } else {
+            url = "https://www.youjizz.com/search/" + enc(query).replace("%20", "-") + "-" + (page + 1) + ".html";
+        }
+        return htmlVideos(
+                url,
+                "YouJizz",
+                "youjizz",
+                Pattern.compile("href=\"(/videos/[^\"]+\\.html)\"[\\s\\S]{0,800}?(?:data-original|src)=\"((?:https:)?//[^\"]+\\.(?:jpg|jpeg|webp)[^\"]*)\"", Pattern.CASE_INSENSITIVE),
+                "https://www.youjizz.com",
+                isFeed(query) ? DESKTOP_UA : BROWSER_UA
         );
     }
 

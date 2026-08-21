@@ -1,7 +1,9 @@
 const AGE_KEY = "gitimgx-age-ok";
 const SAVE_KEY = "gitimgx-saved-videos";
 const DAILY_Q = "__daily__";
-const DAILY_KEY = "gitvidx-daily-v1";
+const NEW_Q = "__new__";
+const VIEWS_Q = "__views__";
+const DAILY_KEY = "gitvidx-feed-v1";
 
 const gate = document.getElementById("age-gate");
 const app = document.getElementById("app");
@@ -25,10 +27,11 @@ const refreshBtn = document.getElementById("refresh-btn");
 const quickRow = document.getElementById("quick-row");
 const presetRow = document.getElementById("preset-row");
 const sourceRow = document.getElementById("source-row");
-const catToggle = document.getElementById("cat-toggle");
-const siteToggle = document.getElementById("site-toggle");
-const catPanel = document.getElementById("cat-panel");
-const sitePanel = document.getElementById("site-panel");
+const filterOpen = document.getElementById("filter-open");
+const filterSheet = document.getElementById("filter-sheet");
+const sheetBackdrop = document.getElementById("sheet-backdrop");
+const sheetClose = document.getElementById("sheet-close");
+const sheetApply = document.getElementById("sheet-apply");
 const catLabel = document.getElementById("cat-label");
 const siteLabel = document.getElementById("site-label");
 
@@ -48,7 +51,7 @@ const LONG_MIN = 20 * 60;
 const MAX_FILTERS = 4;
 
 const state = {
-  query: DAILY_Q,
+  query: NEW_Q,
   filters: [],
   source: "all",
   page: 0,
@@ -58,12 +61,32 @@ const state = {
   done: false,
 };
 
+const draft = {
+  filters: [],
+  source: "all",
+};
+
+function feedKind(query) {
+  const value = query || "";
+  if (value === NEW_Q || value === DAILY_Q) return "new";
+  if (value === VIEWS_Q) return "views";
+  return "";
+}
+
 function isDailyQuery(query) {
-  return (query || "") === DAILY_Q;
+  return feedKind(query) === "new";
+}
+
+function isFeedQuery(query) {
+  return Boolean(feedKind(query));
 }
 
 function inDaily() {
   return !state.filters.length && isDailyQuery(state.query);
+}
+
+function inFeed() {
+  return !state.filters.length && isFeedQuery(state.query);
 }
 
 function inSaved() {
@@ -116,7 +139,8 @@ function localDay() {
 }
 
 function dailyCacheKey(source) {
-  return `${DAILY_KEY}:${localDay()}:${source || "all"}`;
+  const kind = feedKind(state.query) || "new";
+  return `${DAILY_KEY}:${kind}:${localDay()}:${source || "all"}`;
 }
 
 function readDailyCache(source) {
@@ -149,10 +173,11 @@ function dailyStatus(count, date) {
     month: "short",
     day: "numeric",
   });
+  const label = feedKind(state.query) === "views" ? "Most viewed" : "New";
   if (state.source !== "all") {
-    return `Today on ${state.source} · ${pretty} · ${count} videos`;
+    return `${label} on ${state.source} · ${pretty} · ${count} videos`;
   }
-  return `Today's featured · ${pretty} · ${count} videos`;
+  return `${label} across sites · ${pretty} · ${count} videos`;
 }
 
 function savedMap() {
@@ -315,7 +340,7 @@ function makePoster(item) {
 function render(reset) {
   const hasItems = state.items.length > 0;
   empty.hidden = hasItems;
-  moreBtn.hidden = state.done || !hasItems || inSaved() || inDaily();
+  moreBtn.hidden = state.done || !hasItems || inSaved();
   moreLabel.hidden = !hasItems || state.items.length < 2;
 
   if (reset || hero.classList.contains("skeleton") || !hero.querySelector(".hero-card")) {
@@ -412,11 +437,11 @@ async function search(reset, forceRefresh) {
     return;
   }
 
-  if (reset && inDaily() && !forceRefresh) {
+  if (reset && inFeed() && !forceRefresh) {
     const cached = readDailyCache(state.source);
     if (cached) {
       state.items = cached.items;
-      state.done = true;
+      state.done = false;
       setBusy(false);
       setStatus(dailyStatus(state.items.length, cached.date));
       render(true);
@@ -426,8 +451,11 @@ async function search(reset, forceRefresh) {
 
   state.loading = true;
   setBusy(true);
-  setStatus(reset && inDaily()
-    ? (forceRefresh ? "Refreshing today's featured videos…" : "Capturing today's featured videos…")
+  const kind = feedKind(state.query);
+  setStatus(reset && inFeed()
+    ? (forceRefresh
+      ? (kind === "views" ? "Refreshing most viewed…" : "Refreshing newest videos…")
+      : (kind === "views" ? "Loading most viewed across sites…" : "Loading newest videos across sites…"))
     : forceRefresh ? "Refreshing search results…"
     : reset ? "Searching tube sites…" : "Loading more…");
   try {
@@ -457,14 +485,14 @@ async function search(reset, forceRefresh) {
     const next = (data.items || []).filter((item) => (item.page || item.url) && !seen.has(item.id) && matchesLength(item, length));
     state.items.push(...next);
     state.page += 1;
-    state.done = !data.next || inDaily();
-    if (inDaily() && reset && state.items.length) {
+    state.done = !data.next;
+    if (inFeed() && reset && state.items.length) {
       writeDailyCache(state.source, { date: data.date || localDay(), items: state.items, sources: data.sources || [] });
     }
-    const countLabel = inDaily()
+    const countLabel = inFeed()
       ? (state.items.length
         ? dailyStatus(state.items.length, data.date)
-        : data.error || "No featured videos captured yet.")
+        : data.error || "No videos captured yet.")
       : next.length || state.items.length
         ? `${state.items.length} videos`
         : data.error || "No public videos found for that search.";
@@ -486,15 +514,28 @@ function setChipState(row, attr, value) {
   }
 }
 
+function sheetIsOpen() {
+  return Boolean(filterSheet && !filterSheet.hidden);
+}
+
+function liveFilters() {
+  return sheetIsOpen() ? draft.filters : state.filters;
+}
+
+function liveSource() {
+  return sheetIsOpen() ? draft.source : state.source;
+}
+
 function setFilterChips(row) {
   if (!row) return;
+  const filters = row === presetRow ? liveFilters() : state.filters;
   for (const button of row.querySelectorAll("button[data-q]")) {
     const key = button.dataset.q;
-    const on = inDaily()
-      ? key === DAILY_Q
-      : inSaved()
+    const on = inFeed() && row !== presetRow
+      ? feedKind(key) === feedKind(state.query) && Boolean(feedKind(key))
+      : inSaved() && row !== presetRow
         ? key === "favorites"
-        : state.filters.includes(key);
+        : filters.includes(key);
     button.classList.toggle("on", on);
   }
 }
@@ -510,39 +551,61 @@ function chipLabel(row, attr, value, fallback) {
 function syncFilters() {
   setFilterChips(quickRow);
   setFilterChips(presetRow);
-  setChipState(sourceRow, "source", state.source);
+  setChipState(sourceRow, "source", liveSource());
   if (catLabel) {
-    if (inDaily()) catLabel.textContent = "Today";
-    else if (inSaved()) catLabel.textContent = "Saved";
-    else if (state.filters.length) {
-      catLabel.textContent = state.filters
+    const filters = liveFilters();
+    if (filters.length) {
+      catLabel.textContent = filters
         .map((key) => chipLabel(presetRow, "q", key, key))
         .join(" · ");
-    } else {
-      catLabel.textContent = chipLabel(presetRow, "q", state.query, state.query || "Search");
-    }
+    } else if (inFeed()) catLabel.textContent = feedKind(state.query) === "views" ? "Most views" : "New";
+    else if (inSaved()) catLabel.textContent = "Saved";
+    else catLabel.textContent = chipLabel(presetRow, "q", state.query, state.query || "Search");
   }
   if (siteLabel) {
-    siteLabel.textContent = chipLabel(sourceRow, "source", state.source, "All sites");
+    siteLabel.textContent = chipLabel(sourceRow, "source", liveSource(), "All sites");
+  }
+  if (sheetApply) {
+    const n = draft.filters.length;
+    sheetApply.textContent = n ? `Apply (${n})` : "Apply";
   }
 }
 
-function setPanel(panel, toggle, open) {
-  if (!panel || !toggle) return;
-  panel.hidden = !open;
-  toggle.setAttribute("aria-expanded", open ? "true" : "false");
+function openSheet() {
+  if (!filterSheet) return;
+  draft.filters = [...state.filters];
+  draft.source = state.source;
+  filterSheet.hidden = false;
+  if (sheetBackdrop) sheetBackdrop.hidden = false;
+  if (filterOpen) filterOpen.setAttribute("aria-expanded", "true");
+  document.body.classList.add("sheet-open");
+  syncFilters();
+}
+
+function closeSheet() {
+  if (!filterSheet) return;
+  filterSheet.hidden = true;
+  if (sheetBackdrop) sheetBackdrop.hidden = true;
+  if (filterOpen) filterOpen.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("sheet-open");
 }
 
 function closePanels() {
-  setPanel(catPanel, catToggle, false);
-  setPanel(sitePanel, siteToggle, false);
+  closeSheet();
 }
 
-function togglePanel(which) {
-  const catOpen = which === "cat" && catPanel && catPanel.hidden;
-  const siteOpen = which === "site" && sitePanel && sitePanel.hidden;
-  setPanel(catPanel, catToggle, catOpen);
-  setPanel(sitePanel, siteToggle, siteOpen);
+function applySheet() {
+  state.filters = [...draft.filters];
+  state.source = draft.source;
+  if (state.filters.length) {
+    state.query = state.filters[0];
+    input.value = "";
+  } else if (!input.value.trim() && state.query !== "favorites") {
+    state.query = NEW_Q;
+  }
+  closeSheet();
+  syncFilters();
+  search(true);
 }
 
 document.getElementById("age-yes").addEventListener("click", () => {
@@ -558,52 +621,63 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   const query = input.value.trim();
   state.filters = [];
-  state.query = query || DAILY_Q;
+  state.query = query || NEW_Q;
   closePanels();
   syncFilters();
   search(true);
 });
 
 function pickCategory(nextQuery, fromPanel) {
-  if (nextQuery === DAILY_Q || nextQuery === "favorites") {
-    const refreshToday = nextQuery === DAILY_Q && inDaily();
+  if (isFeedQuery(nextQuery) || nextQuery === "favorites") {
+    const refreshToday = isFeedQuery(nextQuery) && feedKind(nextQuery) === feedKind(state.query);
     state.filters = [];
     state.query = nextQuery;
     input.value = "";
-    closePanels();
+    closeSheet();
     syncFilters();
     search(true, refreshToday);
     return;
   }
+  const bag = fromPanel ? draft : state;
   if (HAIR.has(nextQuery)) {
-    state.filters = state.filters.filter((key) => !HAIR.has(key));
-    state.filters.push(nextQuery);
+    bag.filters = bag.filters.filter((key) => !HAIR.has(key));
+    bag.filters.push(nextQuery);
   } else if (CAMERA.has(nextQuery)) {
-    state.filters = state.filters.filter((key) => !CAMERA.has(key));
-    state.filters.push(nextQuery);
+    bag.filters = bag.filters.filter((key) => !CAMERA.has(key));
+    bag.filters.push(nextQuery);
   } else if (LENGTH.has(nextQuery)) {
-    if (state.filters.includes(nextQuery)) {
-      state.filters = state.filters.filter((key) => !LENGTH.has(key));
+    if (bag.filters.includes(nextQuery)) {
+      bag.filters = bag.filters.filter((key) => !LENGTH.has(key));
     } else {
-      state.filters = state.filters.filter((key) => !LENGTH.has(key));
-      state.filters.push(nextQuery);
+      bag.filters = bag.filters.filter((key) => !LENGTH.has(key));
+      bag.filters.push(nextQuery);
     }
-  } else if (state.filters.includes(nextQuery)) {
-    state.filters = state.filters.filter((key) => key !== nextQuery);
+  } else if (bag.filters.includes(nextQuery)) {
+    bag.filters = bag.filters.filter((key) => key !== nextQuery);
   } else {
-    if (state.filters.length >= MAX_FILTERS) state.filters.shift();
-    state.filters.push(nextQuery);
+    if (bag.filters.length >= MAX_FILTERS) bag.filters.shift();
+    bag.filters.push(nextQuery);
   }
-  state.query = state.filters[0] || DAILY_Q;
+  if (fromPanel) {
+    syncFilters();
+    return;
+  }
+  state.query = state.filters[0] || NEW_Q;
   input.value = "";
-  if (!fromPanel) closePanels();
+  closeSheet();
   syncFilters();
   search(true);
 }
 
 function clearFilters() {
+  if (sheetIsOpen()) {
+    draft.filters = [];
+    draft.source = "all";
+    syncFilters();
+    return;
+  }
   state.filters = [];
-  state.query = DAILY_Q;
+  state.query = NEW_Q;
   input.value = "";
   syncFilters();
   search(true);
@@ -631,15 +705,27 @@ if (sourceRow) {
   sourceRow.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-source]");
     if (!button) return;
+    if (sheetIsOpen()) {
+      draft.source = button.dataset.source;
+      syncFilters();
+      return;
+    }
     state.source = button.dataset.source;
-    closePanels();
     syncFilters();
     if (!inSaved()) search(true);
   });
 }
 
-if (catToggle) catToggle.addEventListener("click", () => togglePanel("cat"));
-if (siteToggle) siteToggle.addEventListener("click", () => togglePanel("site"));
+if (filterOpen) filterOpen.addEventListener("click", () => {
+  if (sheetIsOpen()) closeSheet();
+  else openSheet();
+});
+if (sheetClose) sheetClose.addEventListener("click", closeSheet);
+if (sheetBackdrop) sheetBackdrop.addEventListener("click", closeSheet);
+if (sheetApply) sheetApply.addEventListener("click", applySheet);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && sheetIsOpen()) closeSheet();
+});
 
 if (refreshBtn) {
   refreshBtn.addEventListener("click", () => {
@@ -689,7 +775,7 @@ function enterApp() {
   setOpen(gate, false);
   setOpen(app, true);
   setOpen(viewer, false);
-  input.value = inDaily() || inSaved() || state.filters.length ? "" : state.query;
+  input.value = inFeed() || inSaved() || state.filters.length ? "" : state.query;
   syncFilters();
   search(true);
 }
@@ -711,8 +797,8 @@ window.DE_onBack = function () {
     closeViewer();
     return true;
   }
-  if ((catPanel && !catPanel.hidden) || (sitePanel && !sitePanel.hidden)) {
-    closePanels();
+  if (sheetIsOpen()) {
+    closeSheet();
     return true;
   }
   return false;

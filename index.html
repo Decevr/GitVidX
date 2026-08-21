@@ -51,36 +51,40 @@
           id="search-input"
           type="search"
           enterkeyhint="search"
-          placeholder="Search, or open Today for featured…"
+          placeholder="Search, or open New / Most views…"
           aria-label="Search videos"
         />
         <button type="submit" class="btn primary search-go">Search</button>
+        <button type="button" class="filter-open" id="filter-open" aria-expanded="false" aria-controls="filter-sheet">
+          <span class="filter-kicker">Filters</span>
+          <span class="filter-value" id="cat-label">Today</span>
+        </button>
       </form>
 
       <div class="quick-row" id="quick-row" aria-label="Quick filters">
-        <button type="button" class="chip on" data-q="__daily__">Today</button>
-        <button type="button" class="chip" data-q="amateur">Amateur</button>
-        <button type="button" class="chip" data-q="homemade">Homemade</button>
-        <button type="button" class="chip" data-q="onlyfans">OnlyFans</button>
+        <button type="button" class="chip on" data-q="__new__">New</button>
+        <button type="button" class="chip" data-q="__views__">Most views</button>
         <button type="button" class="chip" data-q="favorites">Saved</button>
       </div>
 
-      <div class="filter-bar">
-        <button type="button" class="filter-btn" id="cat-toggle" aria-expanded="false" aria-controls="cat-panel">
-          <span class="filter-kicker">Category</span>
-          <span class="filter-value" id="cat-label">Today</span>
-        </button>
-        <button type="button" class="filter-btn" id="site-toggle" aria-expanded="false" aria-controls="site-panel">
-          <span class="filter-kicker">Site</span>
-          <span class="filter-value" id="site-label">All sites</span>
-        </button>
+      <div class="status-row">
+        <p class="status-line" id="status-line">Confirm age to start.</p>
+        <button type="button" class="refresh-btn" id="refresh-btn" hidden>Refresh</button>
       </div>
+      <div class="progress" id="progress" hidden></div>
+      <p class="consent-line">Consensual, legal, 18+ videos only.</p>
+    </header>
 
-      <div class="filter-panel" id="cat-panel" hidden>
+    <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+    <aside class="filter-sheet" id="filter-sheet" hidden role="dialog" aria-labelledby="sheet-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-top">
+        <h2 id="sheet-title">Filters</h2>
+        <span class="sheet-site" id="site-label">All sites</span>
+        <button type="button" class="sheet-close" id="sheet-close" aria-label="Close filters">×</button>
+      </div>
+      <div class="sheet-body">
         <div class="chip-grid" id="preset-row" aria-label="Categories">
-          <button type="button" class="chip on" data-q="__daily__">Today</button>
-          <button type="button" class="chip" data-q="favorites">Saved</button>
-          <button type="button" class="chip clear-chip" id="clear-filters">Clear</button>
           <p class="panel-label">Hair</p>
           <button type="button" class="chip" data-q="blonde" data-group="hair">Blonde</button>
           <button type="button" class="chip" data-q="brunette" data-group="hair">Brunette</button>
@@ -205,10 +209,8 @@
           <button type="button" class="chip" data-q="against wall">Against wall</button>
           <button type="button" class="chip" data-q="chair">Chair</button>
         </div>
-      </div>
-
-      <div class="filter-panel" id="site-panel" hidden>
         <div class="chip-grid" id="source-row" aria-label="Sites">
+          <p class="panel-label">Sites</p>
           <button type="button" class="source on" data-source="all">All sites</button>
           <button type="button" class="source" data-source="pornhub">Pornhub</button>
           <button type="button" class="source" data-source="xvideos">XVideos</button>
@@ -227,16 +229,21 @@
           <button type="button" class="source" data-source="whoreshub">WhoresHub</button>
           <button type="button" class="source" data-source="yespornvip">YesPornVIP</button>
           <button type="button" class="source" data-source="justporn">JustPorn</button>
+          <button type="button" class="source" data-source="spankbang">SpankBang</button>
+          <button type="button" class="source" data-source="txxx">TXXX</button>
+          <button type="button" class="source" data-source="3movs">3Movs</button>
+          <button type="button" class="source" data-source="hdzog">HDZog</button>
+          <button type="button" class="source" data-source="hotmovs">HotMovs</button>
+          <button type="button" class="source" data-source="porngo">PornGo</button>
+          <button type="button" class="source" data-source="youjizz">YouJizz</button>
+          <button type="button" class="source" data-source="xozilla">Xozilla</button>
         </div>
       </div>
-
-      <div class="status-row">
-        <p class="status-line" id="status-line">Confirm age to start.</p>
-        <button type="button" class="refresh-btn" id="refresh-btn" hidden>Refresh</button>
+      <div class="sheet-foot">
+        <button type="button" class="btn ghost" id="clear-filters">Clear</button>
+        <button type="button" class="btn primary sheet-apply" id="sheet-apply">Apply</button>
       </div>
-      <div class="progress" id="progress" hidden></div>
-      <p class="consent-line">Consensual, legal, 18+ videos only.</p>
-    </header>
+    </aside>
 
     <main id="main">
       <section class="hero" id="hero" hidden></section>
